@@ -26,10 +26,13 @@ const itemOrder = ['icecream', 'taco', 'donut', 'fries', 'hotdog', 'burger', 'ch
 const assetAdjustments = {
     'burger': { scale: 0.9, position: { x: 0, y: 0.1, z: 0 } }, // 10% smaller, 10% up
     'chicken': { scale: 0.9, position: { x: 0, y: 0.1, z: 0 } }, // 10% smaller, 10% up
-    'donut': { scale: 1.0, position: { x: 0, y: 0, z: 0 }, rotation: { x: 25, y: 0, z: 15 } }, // Tilt around Z-axis
+    'donut': { scale: 1.0, position: { x: 0, y: 0, z: 0 }, rotation: { x: 30, y: 0, z: 15 } }, // Tilt around Z-axis (X-axis increased by 5°)
     'fries': { scale: 1.0, position: { x: 0, y: 0.05, z: 0 } }, // 5% up
     'pizza': { scale: 1.0, position: { x: 0, y: 0.05, z: 0 } }, // 5% up
-    'icecream': { scale: 1.1, position: { x: 0, y: 0.05, z: 0 } }, // 10% larger, 5% up
+    'icecream': { scale: 1.0, position: { x: 0, y: 0.05, z: 0 } }, // Original size (1.0), 5% up
+    'coffee': { scale: 1.1, position: { x: 0, y: 0, z: 0 } }, // Scaled to 1.1 (10% larger than base)
+    'taco': { scale: 1.0, position: { x: 0, y: 0.1, z: 0 } }, // Moved up 0.1 units
+    'hotdog': { scale: 1.0, position: { x: 0, y: 0.05, z: 0 } }, // Moved up 0.05 units
 };
 
 /**
@@ -105,10 +108,10 @@ export async function initSelector(scene, camera) {
         // Position at adjusted coordinates
         mesh.position.set(adjustedX, adjustedY, adjustedZ);
         
-        // Tilt items 25 degrees forward (around X-axis) to see more from top
+        // Tilt items 30 degrees forward (around X-axis) to see more from top
         // This gives a better view as items rotate around Y-axis
         // Allow per-asset rotation overrides
-        const rotationX = adjustments.rotation?.x ?? 25;
+        const rotationX = adjustments.rotation?.x ?? 30;
         const rotationY = adjustments.rotation?.y ?? 0;
         const rotationZ = adjustments.rotation?.z ?? 0;
         

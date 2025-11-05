@@ -18,6 +18,7 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { applyFresnelToMaterial } from './fresnel.js';
 
 let loader;
 let loadedModel = null;
@@ -353,6 +354,22 @@ export function getFoodItem(itemName) {
         if (originalMat.metalness !== undefined) clonedMat.metalness = originalMat.metalness;
         if (originalMat.transmission !== undefined) clonedMat.transmission = originalMat.transmission;
         if (originalMat.color !== undefined) clonedMat.color.copy(originalMat.color);
+        
+        // Apply fresnel shader effect for rim lighting
+        // Peach color matching the sunset gradient - more edge-focused (pinched)
+        // Increased saturation by 20% for more vibrant rim light
+        const rimLightColor = new THREE.Color(0xffd5b5); // Peach color (#ffd5b5)
+        const hsl = {};
+        rimLightColor.getHSL(hsl);
+        hsl.s = Math.min(1.0, hsl.s * 1.2); // Increase saturation by 20%
+        rimLightColor.setHSL(hsl.h, hsl.s, hsl.l);
+        
+        applyFresnelToMaterial(clonedMat, {
+            color: rimLightColor,
+            intensity: 1.125, // 25% reduction from 1.5 (1.5 * 0.75 = 1.125)
+            power: 5.0, // More edge-focused (pinched) - higher power = tighter rim
+            bias: 0.0
+        });
         
         // Force material update
         clonedMat.needsUpdate = true;

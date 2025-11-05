@@ -94,12 +94,14 @@ function createSunsetGradient(width, height) {
 function setupLighting() {
     // Ambient light - desaturated warm tint (75% less saturation)
     // Mix warm color with white for subtle warmth
-    const ambientLight = new THREE.AmbientLight(0xfefaf0, 0.6); // Very desaturated warm white
+    // Brightened by 20%: 0.6 * 1.2 = 0.72
+    const ambientLight = new THREE.AmbientLight(0xfefaf0, 0.72); // Very desaturated warm white
     scene.add(ambientLight);
 
     // Main directional light - desaturated warm tone (75% less saturation)
     // Positioned from above/behind to simulate sunset lighting
-    const directionalLight = new THREE.DirectionalLight(0xfef5f0, 1.0); // Desaturated warm white
+    // Brightened by 20%: 1.0 * 1.2 = 1.2
+    const directionalLight = new THREE.DirectionalLight(0xfef5f0, 1.2); // Desaturated warm white
     directionalLight.position.set(3, 8, 5); // From above and behind (sunset angle)
     directionalLight.castShadow = true;
     directionalLight.shadow.mapSize.width = 2048;
@@ -113,12 +115,14 @@ function setupLighting() {
     scene.add(directionalLight);
 
     // Fill light - desaturated warm tone from the front
-    const fillLight = new THREE.DirectionalLight(0xfef8f0, 0.4); // Very desaturated warm
+    // Brightened by 20%: 0.4 * 1.2 = 0.48
+    const fillLight = new THREE.DirectionalLight(0xfef8f0, 0.48); // Very desaturated warm
     fillLight.position.set(-3, 2, 3); // From front-left
     scene.add(fillLight);
     
     // Rim light - desaturated warm tone from behind
-    const rimLight = new THREE.DirectionalLight(0xfef5f0, 0.3); // Desaturated warm
+    // Brightened by 20%: 0.3 * 1.2 = 0.36
+    const rimLight = new THREE.DirectionalLight(0xfef5f0, 0.36); // Desaturated warm
     rimLight.position.set(-2, 4, -5); // From behind
     scene.add(rimLight);
     
@@ -126,12 +130,14 @@ function setupLighting() {
     // Positioned closer to food items at the same level (Y=0) for even side illumination
     // Using strong saturated colors from VelvetSun gradient
     // Left side point light - strong dark red from top of gradient
-    const leftPointLight = new THREE.PointLight(0xe73827, 2.5, 50); // Dark red/velvet (#e73827), 25% more intense (2.0 * 1.25 = 2.5)
+    // Brightened by 20%: 2.5 * 1.2 = 3.0
+    const leftPointLight = new THREE.PointLight(0xe73827, 3.0, 50); // Dark red/velvet (#e73827)
     leftPointLight.position.set(-4, 0, 0); // Left side, closer to food items, same level
     scene.add(leftPointLight);
     
     // Right side point light - strong orange-yellow from bottom of gradient
-    const rightPointLight = new THREE.PointLight(0xf8aa3b, 2.5, 50); // Bright orange-yellow (#f8aa3b), 25% more intense (2.0 * 1.25 = 2.5)
+    // Brightened by 20%: 2.5 * 1.2 = 3.0
+    const rightPointLight = new THREE.PointLight(0xf8aa3b, 3.0, 50); // Bright orange-yellow (#f8aa3b)
     rightPointLight.position.set(4, 0, 0); // Right side, closer to food items, same level
     scene.add(rightPointLight);
 }
