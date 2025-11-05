@@ -1,0 +1,31 @@
+# Backup files
+*.bak
+*.bak*
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependencies
+node_modules/
+
+# Build outputs (if we add a build process later)
+dist/
+build/
+*.min.js
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment variables
+.env
+.env.local
+

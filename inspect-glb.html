@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLB Inspector</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        pre {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>GLB File Inspector</h1>
+    <div id="output">Loading GLB file...</div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        const loader = new GLTFLoader();
+        const output = document.getElementById('output');
+        
+        let report = {
+            meshes: [],
+            groups: [],
+            materials: [],
+            textures: []
+        };
+
+        loader.load(
+            '3d-assets/fast_food_stylized.glb',
+            (gltf) => {
+                const scene = gltf.scene;
+                
+                // Traverse the entire scene
+                scene.traverse((child) => {
+                    if (child.isMesh) {
+                        // Calculate triangle count
+                        let triangleCount = 0;
+                        if (child.geometry) {
+                            const geometry = child.geometry;
+                            if (geometry.index) {
+                                // Indexed geometry - count indices
+                                triangleCount = geometry.index.count / 3;
+                            } else {
+                                // Non-indexed geometry - count positions
+                                const positionAttr = geometry.attributes.position;
+                                if (positionAttr) {
+                                    triangleCount = positionAttr.count / 3;
+                                }
+                            }
+                        }
+                        
+                        const meshInfo = {
+                            name: child.name || '(unnamed)',
+                            type: child.type,
+                            geometry: child.geometry ? child.geometry.type : 'none',
+                            triangles: triangleCount,
+                            material: child.material ? {
+                                type: child.material.type,
+                                name: child.material.name || '(unnamed)'
+                            } : 'none',
+                            position: {
+                                x: child.position.x.toFixed(2),
+                                y: child.position.y.toFixed(2),
+                                z: child.position.z.toFixed(2)
+                            },
+                            scale: {
+                                x: child.scale.x.toFixed(2),
+                                y: child.scale.y.toFixed(2),
+                                z: child.scale.z.toFixed(2)
+                            }
+                        };
+                        report.meshes.push(meshInfo);
+                    } else if (child.isGroup) {
+                        report.groups.push({
+                            name: child.name || '(unnamed)',
+                            type: child.type,
+                            children: child.children.length
+                        });
+                    }
+                });
+
+                // Display results
+                let html = '<h2>GLB Analysis Results</h2>';
+                html += `<p><strong>Total meshes found: ${report.meshes.length}</strong></p>`;
+                
+                html += '<h3>All Meshes:</h3><pre>';
+                let totalTriangles = 0;
+                report.meshes.forEach((mesh, index) => {
+                    totalTriangles += mesh.triangles;
+                    html += `${index + 1}. "${mesh.name}"\n`;
+                    html += `   Type: ${mesh.type}\n`;
+                    html += `   Geometry: ${mesh.geometry}\n`;
+                    html += `   Triangles: ${mesh.triangles.toLocaleString()}\n`;
+                    html += `   Material: ${typeof mesh.material === 'object' ? mesh.material.type + ' (' + mesh.material.name + ')' : mesh.material}\n`;
+                    html += `   Position: (${mesh.position.x}, ${mesh.position.y}, ${mesh.position.z})\n`;
+                    html += `   Scale: (${mesh.scale.x}, ${mesh.scale.y}, ${mesh.scale.z})\n\n`;
+                });
+                html += '</pre>';
+                
+                const avgTriangles = totalTriangles / report.meshes.length;
+                html += `<h3>Statistics:</h3><pre>`;
+                html += `Total Meshes: ${report.meshes.length}\n`;
+                html += `Total Triangles: ${totalTriangles.toLocaleString()}\n`;
+                html += `Average Triangles per Mesh: ${Math.round(avgTriangles).toLocaleString()}\n`;
+                html += `Min Triangles: ${Math.min(...report.meshes.map(m => m.triangles)).toLocaleString()}\n`;
+                html += `Max Triangles: ${Math.max(...report.meshes.map(m => m.triangles)).toLocaleString()}\n`;
+                html += '</pre>';
+
+                html += '<h3>Extracted Food Items (by name matching):</h3><pre>';
+                const foodItems = [];
+                report.meshes.forEach(mesh => {
+                    const name = mesh.name.toLowerCase();
+                    let itemName = null;
+                    
+                    if (name.includes('burger')) itemName = 'burger';
+                    else if (name.includes('chicken') || name.includes('legs')) itemName = 'chicken';
+                    else if (name.includes('coffee')) itemName = 'coffee';
+                    else if (name.includes('donut')) itemName = 'donut';
+                    else if (name.includes('fries') || name.includes('french')) itemName = 'fries';
+                    else if (name.includes('hotdog') || name.includes('hot_dog')) itemName = 'hotdog';
+                    else if (name.includes('ice') || name.includes('cream')) itemName = 'icecream';
+                    else if (name.includes('pizza')) itemName = 'pizza';
+                    else if (name.includes('taco')) itemName = 'taco';
+                    
+                    if (itemName) {
+                        foodItems.push({ original: mesh.name, extracted: itemName });
+                    }
+                });
+
+                if (foodItems.length > 0) {
+                    foodItems.forEach(item => {
+                        html += `✓ "${item.original}" → ${item.extracted}\n`;
+                    });
+                } else {
+                    html += '⚠ No food items matched by current patterns\n';
+                }
+                html += '</pre>';
+
+                html += '<h3>Unmatched Meshes:</h3><pre>';
+                const unmatched = report.meshes.filter(mesh => {
+                    const name = mesh.name.toLowerCase();
+                    return !name.includes('burger') && 
+                           !name.includes('chicken') && 
+                           !name.includes('legs') &&
+                           !name.includes('coffee') &&
+                           !name.includes('donut') &&
+                           !name.includes('fries') &&
+                           !name.includes('french') &&
+                           !name.includes('hotdog') &&
+                           !name.includes('hot_dog') &&
+                           !name.includes('ice') &&
+                           !name.includes('cream') &&
+                           !name.includes('pizza') &&
+                           !name.includes('taco');
+                });
+
+                if (unmatched.length > 0) {
+                    unmatched.forEach(mesh => {
+                        html += `⚠ "${mesh.name}"\n`;
+                    });
+                } else {
+                    html += 'All meshes matched!\n';
+                }
+                html += '</pre>';
+
+                output.innerHTML = html;
+            },
+            (progress) => {
+                const percent = (progress.loaded / progress.total) * 100;
+                output.innerHTML = `Loading: ${percent.toFixed(1)}%`;
+            },
+            (error) => {
+                output.innerHTML = `<pre style="color: red;">Error loading GLB: ${error.message}</pre>`;
+                console.error('Error:', error);
+            }
+        );
+    </script>
+</body>
+</html>
+

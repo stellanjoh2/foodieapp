@@ -1,0 +1,195 @@
+/**
+ * Three.js scene setup and management
+ * Handles scene, camera, renderer, lighting
+ */
+
+import * as THREE from 'three';
+import { getDevicePixelRatio, setupVisibilityHandling } from './utils.js';
+
+let scene, camera, renderer;
+let isRendering = true;
+
+/**
+ * Initialize Three.js scene
+ * @param {HTMLElement} container - DOM container for canvas
+ * @returns {Object} Scene objects { scene, camera, renderer }
+ */
+export function initScene(container) {
+    // Scene
+    scene = new THREE.Scene();
+    // Sunset gradient background (purple → pink → orange → yellow-orange)
+    scene.background = createSunsetGradient(container.clientWidth, container.clientHeight);
+
+    // Camera
+    const aspect = container.clientWidth / container.clientHeight;
+    camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000); // FOV lowered to 45
+    camera.position.set(0, 0, 5);
+
+    // Renderer
+    const pixelRatio = getDevicePixelRatio();
+    renderer = new THREE.WebGLRenderer({ 
+        antialias: true,
+        powerPreference: 'high-performance'
+    });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(pixelRatio);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    
+    container.appendChild(renderer.domElement);
+
+    // Lighting
+    setupLighting();
+
+    // Handle window resize
+    window.addEventListener('resize', onWindowResize);
+
+    // Pause rendering when tab is hidden
+    setupVisibilityHandling(
+        () => { isRendering = false; },
+        () => { isRendering = true; }
+    );
+
+    return { scene, camera, renderer };
+}
+
+/**
+ * Create VelvetSun gradient texture for background
+ * Based on https://uigradients.com/#VelvetSun
+ * Red at top, bright orange/yellow at bottom
+ * @param {number} width - Canvas width
+ * @param {number} height - Canvas height
+ * @returns {THREE.Texture} Gradient texture
+ */
+function createSunsetGradient(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // VelvetSun gradient: dark red at top → bright orange/yellow at bottom
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    
+    // Top: Dark red/velvet red
+    gradient.addColorStop(0, '#e73827');      // Dark red/velvet red
+    
+    // Transition through red-orange
+    gradient.addColorStop(0.5, '#f0573a');    // Bright red-orange
+    
+    // Bottom: Bright orange/yellow
+    gradient.addColorStop(1, '#f8aa3b');      // Bright orange-yellow
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+}
+
+/**
+ * Setup scene lighting - matching VelvetSun sunset gradient
+ * Reduced saturation (75% less) with studio point lights on sides
+ */
+function setupLighting() {
+    // Ambient light - desaturated warm tint (75% less saturation)
+    // Mix warm color with white for subtle warmth
+    const ambientLight = new THREE.AmbientLight(0xfefaf0, 0.6); // Very desaturated warm white
+    scene.add(ambientLight);
+
+    // Main directional light - desaturated warm tone (75% less saturation)
+    // Positioned from above/behind to simulate sunset lighting
+    const directionalLight = new THREE.DirectionalLight(0xfef5f0, 1.0); // Desaturated warm white
+    directionalLight.position.set(3, 8, 5); // From above and behind (sunset angle)
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
+    directionalLight.shadow.camera.near = 0.5;
+    directionalLight.shadow.camera.far = 50;
+    directionalLight.shadow.camera.left = -10;
+    directionalLight.shadow.camera.right = 10;
+    directionalLight.shadow.camera.top = 10;
+    directionalLight.shadow.camera.bottom = -10;
+    scene.add(directionalLight);
+
+    // Fill light - desaturated warm tone from the front
+    const fillLight = new THREE.DirectionalLight(0xfef8f0, 0.4); // Very desaturated warm
+    fillLight.position.set(-3, 2, 3); // From front-left
+    scene.add(fillLight);
+    
+    // Rim light - desaturated warm tone from behind
+    const rimLight = new THREE.DirectionalLight(0xfef5f0, 0.3); // Desaturated warm
+    rimLight.position.set(-2, 4, -5); // From behind
+    scene.add(rimLight);
+    
+    // Studio point lights - left and right sides for studio-like lighting
+    // Positioned closer to food items at the same level (Y=0) for even side illumination
+    // Using strong saturated colors from VelvetSun gradient
+    // Left side point light - strong dark red from top of gradient
+    const leftPointLight = new THREE.PointLight(0xe73827, 2.5, 50); // Dark red/velvet (#e73827), 25% more intense (2.0 * 1.25 = 2.5)
+    leftPointLight.position.set(-4, 0, 0); // Left side, closer to food items, same level
+    scene.add(leftPointLight);
+    
+    // Right side point light - strong orange-yellow from bottom of gradient
+    const rightPointLight = new THREE.PointLight(0xf8aa3b, 2.5, 50); // Bright orange-yellow (#f8aa3b), 25% more intense (2.0 * 1.25 = 2.5)
+    rightPointLight.position.set(4, 0, 0); // Right side, closer to food items, same level
+    scene.add(rightPointLight);
+}
+
+/**
+ * Handle window resize
+ */
+function onWindowResize() {
+    const container = renderer.domElement.parentElement;
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    renderer.setSize(width, height);
+    
+    // Update sunset gradient background to match new size
+    scene.background = createSunsetGradient(width, height);
+}
+
+/**
+ * Start render loop
+ * @param {Function} updateCallback - Called each frame for animations/updates
+ */
+export function startRenderLoop(updateCallback) {
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        if (isRendering) {
+            updateCallback();
+            renderer.render(scene, camera);
+        }
+    }
+    
+    animate();
+}
+
+/**
+ * Get scene reference
+ * @returns {THREE.Scene} Scene object
+ */
+export function getScene() {
+    return scene;
+}
+
+/**
+ * Get camera reference
+ * @returns {THREE.PerspectiveCamera} Camera object
+ */
+export function getCamera() {
+    return camera;
+}
+
+/**
+ * Get renderer reference
+ * @returns {THREE.WebGLRenderer} Renderer object
+ */
+export function getRenderer() {
+    return renderer;
+}
+
