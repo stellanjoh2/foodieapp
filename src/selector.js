@@ -149,7 +149,7 @@ export async function initSelector(scene, camera) {
         mesh.userData.targetScale = index === 0 ? 1.5 : 1.0; // First item (ice cream) is selected
         
         // Initialize rotation speed (selected items spin faster)
-        mesh.userData.targetRotationSpeed = index === 0 ? 1.5 : 0.5; // 1.5x for selected, 0.5x for unselected
+        mesh.userData.targetRotationSpeed = index === 0 ? 3.0 : 0.5; // 3.0x for selected, 0.5x for unselected
         mesh.userData.currentRotationSpeed = mesh.userData.targetRotationSpeed;
 
         // No per-asset spin axis state; handled during rotation update
@@ -244,8 +244,8 @@ function updateSelection() {
         // Scale selected item 1.5x compared to non-selected (1.0x)
         const targetScale = isSelected ? 1.5 : 1.0;
         
-        // Rotation speed: selected items spin 2.0x, unselected spin at 0.5x
-        const targetRotationSpeed = isSelected ? 2.0 : 0.5;
+        // Rotation speed: selected items spin 3.0x, unselected spin at 0.5x
+        const targetRotationSpeed = isSelected ? 3.0 : 0.5;
         
         // Set target scale - smooth interpolation will handle the transition
         // Don't immediately set scale, let the update loop handle it smoothly
