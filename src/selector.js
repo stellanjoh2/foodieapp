@@ -342,7 +342,7 @@ export function updateSelector(deltaTime = 0.016) {
             // Each item has a slight phase offset based on index for natural variation
             const phaseOffset = index * 0.5; // Offset each item slightly for natural variation
             const floatSpeed = 1.2; // 50% faster floating (cycles per second)
-            const floatAmplitude = 0.055; // +10% taller sway
+            const floatAmplitude = 0.06875; // +25% taller sway from previous
             
             // Gentle sine wave for smooth floating motion
             const floatingOffset = Math.sin(floatingTime * floatSpeed + phaseOffset) * floatAmplitude;
