@@ -369,8 +369,8 @@ export function getFoodItem(itemName) {
         
         applyFresnelToMaterial(clonedMat, {
             color: rimLightColor,
-            intensity: 1.485, // Increased by 10% (1.35 * 1.1 = 1.485)
-            power: 4.17, // Increased radius by 20% (5.0 / 1.2 = 4.17) - lower power = wider spread
+            intensity: 1.3365, // Reduced by 10% from 1.485
+            power: 4.17,
             bias: 0.0
         });
         

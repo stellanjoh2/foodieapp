@@ -102,7 +102,7 @@ function setupLighting() {
     // Main directional light - desaturated warm tone (75% less saturation)
     // Positioned from above/behind to simulate sunset lighting
     // Brightened by 20%: 1.0 * 1.2 = 1.2
-    const directionalLight = new THREE.DirectionalLight(0xfef5f0, 1.2); // Desaturated warm white
+           const directionalLight = new THREE.DirectionalLight(0xfef5f0, 1.44); // +20% intensity (from 1.2)
     directionalLight.position.set(3, 8, 5); // From above and behind (sunset angle)
     directionalLight.castShadow = true;
     directionalLight.shadow.mapSize.width = 2048;
