@@ -151,6 +151,9 @@ export async function initSelector(scene, camera) {
         // Initialize rotation speed (selected items spin faster)
         mesh.userData.targetRotationSpeed = index === 0 ? 1.5 : 0.5; // 1.5x for selected, 0.5x for unselected
         mesh.userData.currentRotationSpeed = mesh.userData.targetRotationSpeed;
+
+        // Set per-asset spin axis (donut does a flat spin around Z)
+        mesh.userData.spinAxis = (item.name === 'donut') ? 'z' : 'y';
         
         // Add to group
         itemGroup.add(mesh);
@@ -348,11 +351,12 @@ export function updateSelector(deltaTime = 0.016) {
             mesh.position.set(origPos.x, origPos.y + floatingOffset, origPos.z);
         }
         
-        // Ensure rotation X and Z stay fixed (only Y rotates for spinning)
+        // Ensure rotation axes stay fixed except the axis used for spinning
         if (mesh.userData.originalRotationX !== undefined) {
             mesh.rotation.x = mesh.userData.originalRotationX;
         }
-        if (mesh.userData.originalRotationZ !== undefined) {
+        const spinAxis = mesh.userData.spinAxis || 'y';
+        if (mesh.userData.originalRotationZ !== undefined && spinAxis !== 'z') {
             mesh.rotation.z = mesh.userData.originalRotationZ;
         }
     });
@@ -384,9 +388,11 @@ export function updateSelector(deltaTime = 0.016) {
         
         // Apply rotation with current speed multiplier
         const actualRotationSpeed = baseRotationSpeed * newSpeed;
-        if (item.name === 'donut') {
-            // Donut: flat spin around Z axis
+        const spinAxis2 = mesh.userData.spinAxis || 'y';
+        if (spinAxis2 === 'z') {
             mesh.rotation.z += actualRotationSpeed * clampedDelta;
+        } else if (spinAxis2 === 'x') {
+            mesh.rotation.x += actualRotationSpeed * clampedDelta;
         } else {
             mesh.rotation.y += actualRotationSpeed * clampedDelta;
         }
