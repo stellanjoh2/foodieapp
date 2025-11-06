@@ -3,10 +3,11 @@
  * Coordinates initialization, state management, and module communication
  */
 
-import { initScene, startRenderLoop, getScene, getCamera } from './scene.js';
+import { initScene, startRenderLoop, getScene, getCamera, getRenderer } from './scene.js';
 import { initModelLoader, loadModel, getAvailableFoodItems } from './models.js';
 import { initControls } from './controls.js';
 import { initSelector, selectPrevious, selectNext, updateSelector, getSelectedItem } from './selector.js';
+import { initPostProcessing, render as renderPostProcessing } from './postprocessing.js';
 
 // Application state
 const state = {
@@ -48,8 +49,12 @@ async function init() {
             null                  // onSelect (optional)
         );
 
-        // Start render loop
-        startRenderLoop(update);
+        // Initialize post-processing with soft bloom
+        const renderer = getRenderer();
+        initPostProcessing(renderer, scene, camera);
+
+        // Start render loop with post-processing
+        startRenderLoop(update, renderPostProcessing);
 
         // Hide loading indicator
         loadingEl.style.display = 'none';

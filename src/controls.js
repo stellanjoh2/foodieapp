@@ -118,10 +118,17 @@ function startGamepadPolling() {
             return;
         }
 
-        // Check D-pad and left stick for horizontal movement
-        const leftPressed = gamepad.buttons[14]?.pressed || false;  // D-pad left
-        const rightPressed = gamepad.buttons[15]?.pressed || false;  // D-pad right
+        // Check D-pad, shoulder buttons, and left stick for horizontal movement
+        const dPadLeft = gamepad.buttons[14]?.pressed || false;  // D-pad left
+        const dPadRight = gamepad.buttons[15]?.pressed || false;  // D-pad right
+        const leftShoulder = gamepad.buttons[4]?.pressed || false;  // Left shoulder (L1)
+        const rightShoulder = gamepad.buttons[5]?.pressed || false;  // Right shoulder (R1)
         const stickX = gamepad.axes[0];  // Left stick X axis
+        
+        // Combine all left inputs
+        const leftPressed = dPadLeft || leftShoulder;
+        // Combine all right inputs
+        const rightPressed = dPadRight || rightShoulder;
         
         // Threshold for stick input to avoid drift
         const stickThreshold = 0.5;

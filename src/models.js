@@ -356,18 +356,21 @@ export function getFoodItem(itemName) {
         if (originalMat.color !== undefined) clonedMat.color.copy(originalMat.color);
         
         // Apply fresnel shader effect for rim lighting
-        // Peach color matching the sunset gradient - more edge-focused (pinched)
-        // Increased saturation by 20% for more vibrant rim light
-        const rimLightColor = new THREE.Color(0xffd5b5); // Peach color (#ffd5b5)
+        // Warm pink/peach color matching the middle of VelvetSun gradient (#f0573a)
+        // Use the gradient's middle color (bright red-orange) for rim lighting
+        const rimLightColor = new THREE.Color(0xf0573a); // Middle of VelvetSun gradient (bright red-orange)
         const hsl = {};
         rimLightColor.getHSL(hsl);
+        // Increase saturation and brightness slightly for rim lighting (make it more vibrant)
         hsl.s = Math.min(1.0, hsl.s * 1.2); // Increase saturation by 20%
+        hsl.l = Math.min(1.0, hsl.l * 1.3); // Increase lightness by 30% to make it brighter/more visible
+        // Keep the warm red-orange hue (already correct from the gradient color)
         rimLightColor.setHSL(hsl.h, hsl.s, hsl.l);
         
         applyFresnelToMaterial(clonedMat, {
             color: rimLightColor,
-            intensity: 1.125, // 25% reduction from 1.5 (1.5 * 0.75 = 1.125)
-            power: 5.0, // More edge-focused (pinched) - higher power = tighter rim
+            intensity: 1.485, // Increased by 10% (1.35 * 1.1 = 1.485)
+            power: 4.17, // Increased radius by 20% (5.0 / 1.2 = 4.17) - lower power = wider spread
             bias: 0.0
         });
         
@@ -426,6 +429,9 @@ export function getFoodItem(itemName) {
         
         // Reset mesh position to origin after centering
         clonedMesh.position.set(0, 0, 0);
+        
+        // Reset mesh rotation to ensure clean state (will be set in selector)
+        clonedMesh.rotation.set(0, 0, 0);
     }
     
     // Final validation: Check if textures are present

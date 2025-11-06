@@ -11,6 +11,7 @@ let itemGroup = null;
 let selectedIndex = 0;
 let itemSpacing = 1.90; // Distance between items horizontally (25% more spacing than original)
 let itemScale = 1;
+let floatingTime = 0; // Time accumulator for floating animation
 
 // Define the order: ice cream first, burger last
 const itemOrder = ['icecream', 'taco', 'donut', 'fries', 'hotdog', 'burger', 'chicken', 'coffee', 'pizza'];
@@ -24,15 +25,15 @@ const itemOrder = ['icecream', 'taco', 'donut', 'fries', 'hotdog', 'burger', 'ch
  * Rotation overrides the default 25° forward tilt (x-axis)
  */
 const assetAdjustments = {
-    'burger': { scale: 0.9, position: { x: 0, y: 0.1, z: 0 } }, // 10% smaller, 10% up
-    'chicken': { scale: 0.9, position: { x: 0, y: 0.1, z: 0 } }, // 10% smaller, 10% up
-    'donut': { scale: 1.0, position: { x: 0, y: 0, z: 0 }, rotation: { x: 30, y: 0, z: 15 } }, // Tilt around Z-axis (X-axis increased by 5°)
-    'fries': { scale: 1.0, position: { x: 0, y: 0.05, z: 0 } }, // 5% up
-    'pizza': { scale: 1.0, position: { x: 0, y: 0.05, z: 0 } }, // 5% up
-    'icecream': { scale: 1.0, position: { x: 0, y: 0.05, z: 0 } }, // Original size (1.0), 5% up
-    'coffee': { scale: 1.1, position: { x: 0, y: 0, z: 0 } }, // Scaled to 1.1 (10% larger than base)
-    'taco': { scale: 1.0, position: { x: 0, y: 0.1, z: 0 } }, // Moved up 0.1 units
-    'hotdog': { scale: 1.0, position: { x: 0, y: 0.05, z: 0 } }, // Moved up 0.05 units
+    'burger': { scale: 0.9, position: { x: 0, y: 0.1, z: 0 }, rotation: { x: 30, y: 0, z: 0 } }, // 10% smaller, 10% up, 30° tilt
+    'chicken': { scale: 0.9, position: { x: 0, y: 0.1, z: 0 }, rotation: { x: 30, y: 0, z: 0 } }, // 10% smaller, 10% up, 30° tilt
+    'donut': { scale: 1.0, position: { x: 0, y: 0, z: 0 }, rotation: { x: 30, y: 0, z: 30 } }, // Tilt around Z-axis (X-axis 30°, Z-axis 30°)
+    'fries': { scale: 1.0, position: { x: 0, y: 0.05, z: 0 }, rotation: { x: 30, y: 0, z: 0 } }, // 5% up, 30° tilt
+    'pizza': { scale: 1.0, position: { x: 0, y: 0.05, z: 0 }, rotation: { x: 30, y: 0, z: 0 } }, // 5% up, 30° tilt
+    'icecream': { scale: 1.0, position: { x: 0, y: 0.05, z: 0 }, rotation: { x: 30, y: 0, z: 0 } }, // Original size (1.0), 5% up, 30° tilt
+    'coffee': { scale: 1.1, position: { x: 0, y: 0, z: 0 }, rotation: { x: 30, y: 0, z: 0 } }, // Scaled to 1.1, 30° tilt
+    'taco': { scale: 1.0, position: { x: 0, y: 0.1, z: 0 }, rotation: { x: 30, y: 0, z: 0 } }, // Moved up 0.1 units, 30° tilt
+    'hotdog': { scale: 1.0, position: { x: 0, y: 0.05, z: 0 }, rotation: { x: 30, y: 0, z: 0 } }, // Moved up 0.05 units, 30° tilt
 };
 
 /**
@@ -115,13 +116,27 @@ export async function initSelector(scene, camera) {
         const rotationY = adjustments.rotation?.y ?? 0;
         const rotationZ = adjustments.rotation?.z ?? 0;
         
-        mesh.rotation.x = rotationX * Math.PI / 180; // Convert degrees to radians
-        mesh.rotation.y = rotationY * Math.PI / 180;
-        mesh.rotation.z = rotationZ * Math.PI / 180;
+        // Convert to radians
+        const rotationXRad = rotationX * Math.PI / 180;
+        const rotationYRad = rotationY * Math.PI / 180;
+        const rotationZRad = rotationZ * Math.PI / 180;
+        
+        // CRITICAL: Set rotation directly and ensure it's applied
+        mesh.rotation.set(rotationXRad, rotationYRad, rotationZRad);
+        
+        // Debug log for problematic items
+        if (['coffee', 'chicken', 'burger'].includes(item.name)) {
+            console.log(`✓ Applied rotation to ${item.name}: x=${rotationX}°, y=${rotationY}°, z=${rotationZ}°`);
+            console.log(`  Mesh rotation after set:`, mesh.rotation.x, mesh.rotation.y, mesh.rotation.z);
+        }
         
         // Store original position with adjustments for reference
         // We'll restore this position each frame (animations won't break)
         mesh.userData.originalPosition = { x: adjustedX, y: adjustedY, z: adjustedZ };
+        
+        // Store original rotation X and Z (Y will be animated for spinning)
+        mesh.userData.originalRotationX = rotationXRad;
+        mesh.userData.originalRotationZ = rotationZRad;
         
         // Initialize target scale to prevent glitches
         mesh.userData.targetScale = index === 0 ? 1.5 : 1.0; // First item (ice cream) is selected
@@ -253,6 +268,9 @@ export function updateSelector(deltaTime = 0.016) {
     // Clamp deltaTime to prevent large jumps
     const clampedDelta = Math.min(deltaTime, 0.1);
     
+    // Update floating animation time (accumulate over time)
+    floatingTime += clampedDelta;
+    
     // Smoothly scroll to target position using exponential smoothing
     if (itemGroup.userData.targetX !== undefined) {
         const currentX = itemGroup.position.x;
@@ -273,7 +291,7 @@ export function updateSelector(deltaTime = 0.016) {
     }
     
     // Update item scales with smooth, seamless animation
-    items.forEach((item) => {
+    items.forEach((item, index) => {
         const mesh = item.mesh;
         
         // Initialize scale if not set
@@ -302,7 +320,25 @@ export function updateSelector(deltaTime = 0.016) {
         // Only scale affects the item
         if (mesh.userData.originalPosition) {
             const origPos = mesh.userData.originalPosition;
-            mesh.position.set(origPos.x, origPos.y, origPos.z);
+            
+            // Add gentle floating/swaying animation (up and down)
+            // Each item has a slight phase offset based on index for natural variation
+            const phaseOffset = index * 0.5; // Offset each item slightly for natural variation
+            const floatSpeed = 0.8; // Speed of floating (cycles per second)
+            const floatAmplitude = 0.05; // Gentle amplitude (5cm up/down)
+            
+            // Gentle sine wave for smooth floating motion
+            const floatingOffset = Math.sin(floatingTime * floatSpeed + phaseOffset) * floatAmplitude;
+            
+            mesh.position.set(origPos.x, origPos.y + floatingOffset, origPos.z);
+        }
+        
+        // Ensure rotation X and Z stay fixed (only Y rotates for spinning)
+        if (mesh.userData.originalRotationX !== undefined) {
+            mesh.rotation.x = mesh.userData.originalRotationX;
+        }
+        if (mesh.userData.originalRotationZ !== undefined) {
+            mesh.rotation.z = mesh.userData.originalRotationZ;
         }
     });
     

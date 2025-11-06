@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { getDevicePixelRatio, setupVisibilityHandling } from './utils.js';
+import { updatePostProcessing } from './postprocessing.js';
 
 let scene, camera, renderer;
 let isRendering = true;
@@ -154,6 +155,9 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
     renderer.setSize(width, height);
     
+    // Update post-processing composer size
+    updatePostProcessing(width, height);
+    
     // Update sunset gradient background to match new size
     scene.background = createSunsetGradient(width, height);
 }
@@ -161,14 +165,21 @@ function onWindowResize() {
 /**
  * Start render loop
  * @param {Function} updateCallback - Called each frame for animations/updates
+ * @param {Function} postProcessRender - Optional post-processing render function
  */
-export function startRenderLoop(updateCallback) {
+export function startRenderLoop(updateCallback, postProcessRender = null) {
     function animate() {
         requestAnimationFrame(animate);
         
         if (isRendering) {
             updateCallback();
-            renderer.render(scene, camera);
+            
+            // Use post-processing render if available, otherwise use standard render
+            if (postProcessRender) {
+                postProcessRender();
+            } else {
+                renderer.render(scene, camera);
+            }
         }
     }
     
