@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { getAllFoodItems } from './models.js';
+import { isMobile } from './utils.js';
 
 let items = [];
 let itemGroup = null;
@@ -80,7 +81,13 @@ export async function initSelector(scene, camera) {
     itemGroup = new THREE.Group();
     
     // Calculate item spacing and scale
+    // Adjust scale for mobile to ensure single item fills screen nicely
+    const isMobileDevice = isMobile();
     itemScale = calculateItemScale(items);
+    if (isMobileDevice) {
+        // Scale up items slightly for mobile to fill screen better
+        itemScale *= 1.3; // 30% larger on mobile
+    }
     
     // Position items horizontally with perfect Y alignment
     items.forEach((item, index) => {
@@ -149,9 +156,17 @@ export async function initSelector(scene, camera) {
         itemGroup.add(mesh);
     });
     
-    // Position camera closer - showing selected item with partially cropped adjacent items
-    // Camera is close enough to crop side items, focusing on the selected item
-    camera.position.set(0, -0.40, 2.66); // Moved down 15% total (relative to view distance)
+    // Position camera - adjust for mobile vs desktop
+    // Mobile: closer camera to fill screen with single food item
+    // Desktop: showing selected item with partially cropped adjacent items
+    const isMobileDevice = isMobile();
+    if (isMobileDevice) {
+        // Mobile: closer camera, centered vertically for single item focus
+        camera.position.set(0, 0, 2.2); // Closer for mobile - single item fills screen
+    } else {
+        // Desktop: showing selected item with partially cropped adjacent items
+        camera.position.set(0, -0.40, 2.66); // Moved down 15% total (relative to view distance)
+    }
     camera.lookAt(0, 0, 0);
     
     // Center view on ice cream (first item, index 0)

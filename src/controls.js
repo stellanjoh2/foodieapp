@@ -10,7 +10,11 @@ let controls = {
     isDragging: false,
     previousMousePosition: { x: 0, y: 0 },
     gamepadIndex: null,
-    gamepadConnected: false
+    gamepadConnected: false,
+    touchStartX: 0,
+    touchStartY: 0,
+    touchStartTime: 0,
+    isSwipeGesture: false
 };
 
 /**
@@ -53,11 +57,14 @@ export function initControls(container, onNavigateLeft, onNavigateRight, onRotat
         container.addEventListener('click', onMouseClick);
     }
 
-    // Touch events (mobile)
+    // Touch events (mobile) - for swipe navigation
+    container.addEventListener('touchstart', onTouchStart, { passive: false });
+    container.addEventListener('touchmove', onTouchMove, { passive: false });
+    container.addEventListener('touchend', onTouchEnd);
+    
+    // Also handle rotation if needed
     if (onRotate) {
-        container.addEventListener('touchstart', onTouchStart, { passive: false });
-        container.addEventListener('touchmove', onTouchMove, { passive: false });
-        container.addEventListener('touchend', onTouchEnd);
+        // Rotation handled by existing touch handlers
     }
 
     // Prevent context menu on right click
@@ -222,10 +229,15 @@ function onMouseClick(event) {
  */
 function onTouchStart(event) {
     if (event.touches.length === 1) {
+        const touch = event.touches[0];
+        controls.touchStartX = touch.clientX;
+        controls.touchStartY = touch.clientY;
+        controls.touchStartTime = Date.now();
         controls.isDragging = true;
+        controls.isSwipeGesture = false; // Reset swipe flag
         controls.previousMousePosition = {
-            x: event.touches[0].clientX,
-            y: event.touches[0].clientY
+            x: touch.clientX,
+            y: touch.clientY
         };
     }
 }
@@ -235,18 +247,28 @@ function onTouchStart(event) {
  */
 function onTouchMove(event) {
     if (event.touches.length === 1 && controls.isDragging) {
-        event.preventDefault();
-
-        const deltaX = event.touches[0].clientX - controls.previousMousePosition.x;
-        const deltaY = event.touches[0].clientY - controls.previousMousePosition.y;
-
-        if (controls.onRotate) {
-            controls.onRotate(deltaX, deltaY);
+        const touch = event.touches[0];
+        const deltaX = touch.clientX - controls.touchStartX;
+        const deltaY = touch.clientY - controls.touchStartY;
+        
+        // Check if this is primarily a horizontal swipe (not rotation)
+        const absDeltaX = Math.abs(deltaX);
+        const absDeltaY = Math.abs(deltaY);
+        
+        // If horizontal movement is dominant, treat as swipe
+        if (absDeltaX > absDeltaY && absDeltaX > 10) {
+            controls.isSwipeGesture = true;
+            event.preventDefault(); // Prevent scrolling during swipe
+        } else if (controls.onRotate) {
+            // Small movements or vertical movements = rotation
+            const moveDeltaX = touch.clientX - controls.previousMousePosition.x;
+            const moveDeltaY = touch.clientY - controls.previousMousePosition.y;
+            controls.onRotate(moveDeltaX, moveDeltaY);
         }
 
         controls.previousMousePosition = {
-            x: event.touches[0].clientX,
-            y: event.touches[0].clientY
+            x: touch.clientX,
+            y: touch.clientY
         };
     }
 }
@@ -255,12 +277,47 @@ function onTouchMove(event) {
  * Touch end handler
  */
 function onTouchEnd(event) {
-    controls.isDragging = false;
+    if (controls.isDragging && controls.isSwipeGesture && event.changedTouches.length === 1) {
+        const touch = event.changedTouches[0];
+        const deltaX = touch.clientX - controls.touchStartX;
+        const deltaY = touch.clientY - controls.touchStartY;
+        const deltaTime = Date.now() - controls.touchStartTime;
+        
+        // Calculate swipe distance and speed
+        const absDeltaX = Math.abs(deltaX);
+        const absDeltaY = Math.abs(deltaY);
+        const swipeSpeed = absDeltaX / deltaTime; // pixels per ms
+        
+        // Swipe threshold: minimum distance and speed
+        const minSwipeDistance = 50; // pixels
+        const minSwipeSpeed = 0.3; // pixels per ms
+        
+        // Only trigger if horizontal swipe is dominant and meets thresholds
+        if (absDeltaX > absDeltaY && absDeltaX > minSwipeDistance && swipeSpeed > minSwipeSpeed) {
+            if (deltaX < 0 && controls.onNavigateRight) {
+                // Swipe left = navigate right (show next item)
+                controls.onNavigateRight();
+            } else if (deltaX > 0 && controls.onNavigateLeft) {
+                // Swipe right = navigate left (show previous item)
+                controls.onNavigateLeft();
+            }
+        }
+    }
     
-    // Could add tap detection here for mobile selection
-    if (event.changedTouches.length === 1 && controls.onSelect) {
-        // Simple tap detection (no drag)
-        controls.onSelect(event);
+    controls.isDragging = false;
+    controls.isSwipeGesture = false;
+    
+    // Tap detection for selection (if no swipe occurred)
+    if (!controls.isSwipeGesture && event.changedTouches.length === 1 && controls.onSelect) {
+        const touch = event.changedTouches[0];
+        const deltaX = touch.clientX - controls.touchStartX;
+        const deltaY = touch.clientY - controls.touchStartY;
+        const deltaTime = Date.now() - controls.touchStartTime;
+        
+        // Small movement and short duration = tap
+        if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10 && deltaTime < 300) {
+            controls.onSelect(event);
+        }
     }
 }
 
