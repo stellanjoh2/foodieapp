@@ -3,9 +3,13 @@ let overlayContent = null;
 
 const COLLAPSE_DURATION_MS = 220; // matches CSS transition timing
 const HOLD_DURATION_MS = 80; // time to stay collapsed before expanding
+const MIN_QUANTITY = 1;
+const MAX_QUANTITY = 9;
 
 let expandTimeout = null;
 let currentDetails = null;
+let currentItemKey = null;
+const quantityState = new Map();
 
 /**
  * Initialize DOM overlay references.
@@ -22,8 +26,12 @@ export function initOverlay() {
 
     overlayRoot.classList.remove('ui-overlay-collapsed');
 
+    if (overlayContent) {
+        overlayContent.addEventListener('click', handleOverlayClick);
+    }
+
     if (currentDetails) {
-        renderOverlayContent(currentDetails);
+        renderOverlayContent(currentItemKey, currentDetails);
     }
 }
 
@@ -57,16 +65,20 @@ export function configureOverlay(updater) {
 
 /**
  * Update overlay information for the currently selected asset.
+ * @param {string} itemKey
  * @param {{ displayName: string, price: number, calories: number, deliveryMinutes: number }} details
  */
-export function updateOverlayContent(details) {
+export function updateOverlayContent(itemKey, details) {
     currentDetails = details;
+    currentItemKey = itemKey;
     if (!overlayContent || !details) return;
-    renderOverlayContent(details);
+    renderOverlayContent(itemKey, details);
 }
 
-function renderOverlayContent(details) {
+function renderOverlayContent(itemKey, details) {
     if (!overlayContent) return;
+
+    const quantity = getQuantity(itemKey);
 
     overlayContent.innerHTML = `
         <div class="food-header">
@@ -76,6 +88,17 @@ function renderOverlayContent(details) {
             ${createMetaItem('price', 'Price', formatPrice(details.price))}
             ${createMetaItem('calories', 'Energy', `${details.calories} kcal`)}
             ${createMetaItem('delivery', 'Delivery', formatDelivery(details.deliveryMinutes))}
+        </div>
+        <div class="food-controls">
+            <div class="quantity-control" role="group" aria-label="Quantity">
+                <button class="quantity-button" type="button" data-quantity-action="decrement" aria-label="Decrease quantity">
+                    ${getIcon('minus')}
+                </button>
+                <span class="quantity-value" data-quantity-value>×${quantity}</span>
+                <button class="quantity-button" type="button" data-quantity-action="increment" aria-label="Increase quantity">
+                    ${getIcon('plus')}
+                </button>
+            </div>
         </div>
     `;
 }
@@ -118,6 +141,18 @@ function getIcon(type) {
                     <path d="M12 20c-4-2.65-6.5-5.42-6.5-8.47 0-2.18 1.56-3.96 3.5-3.96 1.22 0 2.29.65 3 1.67.71-1.02 1.78-1.67 3-1.67 1.94 0 3.5 1.78 3.5 3.96 0 3.05-2.5 5.82-6.5 8.47Z"/>
                 </svg>
             `;
+        case 'minus':
+            return `
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="11" width="12" height="2" rx="1" />
+                </svg>
+            `;
+        case 'plus':
+            return `
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M11 6a1 1 0 0 1 2 0v5h5a1 1 0 1 1 0 2h-5v5a1 1 0 1 1-2 0v-5H6a1 1 0 1 1 0-2h5V6Z"/>
+                </svg>
+            `;
         case 'delivery':
         default:
             return `
@@ -140,6 +175,34 @@ function getIcon(type) {
  */
 export function getOverlayRoot() {
     return overlayRoot;
+}
+
+function handleOverlayClick(event) {
+    const button = event.target.closest('[data-quantity-action]');
+    if (!button) return;
+    const action = button.getAttribute('data-quantity-action');
+    if (!currentItemKey) return;
+
+    let quantity = getQuantity(currentItemKey);
+    if (action === 'increment') {
+        quantity = Math.min(MAX_QUANTITY, quantity + 1);
+    } else if (action === 'decrement') {
+        quantity = Math.max(MIN_QUANTITY, quantity - 1);
+    }
+
+    quantityState.set(currentItemKey, quantity);
+    const valueEl = overlayContent.querySelector('[data-quantity-value]');
+    if (valueEl) {
+        valueEl.textContent = `×${quantity}`;
+    }
+}
+
+function getQuantity(itemKey) {
+    if (!itemKey) return MIN_QUANTITY;
+    if (!quantityState.has(itemKey)) {
+        quantityState.set(itemKey, MIN_QUANTITY);
+    }
+    return quantityState.get(itemKey);
 }
 
 

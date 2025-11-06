@@ -137,7 +137,7 @@ function updateOverlayWithCurrent() {
     const selected = getSelectedItem();
     if (!selected) return;
     const details = getFoodDetailsByName(selected.name);
-    updateOverlayContent(details);
+    updateOverlayContent(selected.name, details);
 }
 
 // Start application when DOM is ready
