@@ -313,7 +313,7 @@ function lockOverlayHeight(displayName) {
     tempWrapper.appendChild(tempContent);
     document.body.appendChild(tempWrapper);
 
-    const measuredHeight = Math.ceil(tempWrapper.getBoundingClientRect().height + 12);
+    const measuredHeight = Math.ceil(tempWrapper.getBoundingClientRect().height + 32);
 
     document.body.removeChild(tempWrapper);
 
