@@ -85,8 +85,8 @@ export async function initSelector(scene, camera) {
     const isMobileDevice = isMobile();
     itemScale = calculateItemScale(items);
     if (isMobileDevice) {
-        // Scale up items slightly for mobile to fill screen better
-        itemScale *= 1.3; // 30% larger on mobile
+        // Scale down items to half size on mobile
+        itemScale *= 0.5; // Half size on mobile
     }
     
     // Position items horizontally with perfect Y alignment
