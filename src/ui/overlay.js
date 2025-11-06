@@ -3,15 +3,18 @@ let overlayContent = null;
 
 const COLLAPSE_DURATION_MS = 220; // matches CSS transition timing
 const HOLD_DURATION_MS = 80; // time to stay collapsed before expanding
-const TYPE_INTERVAL_MS = 45;
 const MIN_QUANTITY = 1;
 const MAX_QUANTITY = 9;
+const TYPE_BASE_DURATION_MS = 240;
+const TYPE_PER_CHAR_MS = 18;
+const META_STAGGER_MS = 140;
 
 let expandTimeout = null;
+let typingFrame = null;
+let lockedHeight = null;
 let currentDetails = null;
 let currentItemKey = null;
 let pendingDetails = null;
-let typingTimeout = null;
 let isExpanding = false;
 
 const quantityState = new Map();
@@ -31,6 +34,7 @@ export function initOverlay() {
 
     overlayRoot.classList.remove('ui-overlay-collapsed');
     overlayRoot.addEventListener('transitionend', handleOverlayTransitionEnd);
+    overlayRoot.style.overflow = 'hidden';
 
     if (overlayContent) {
         overlayContent.addEventListener('click', handleOverlayClick);
@@ -38,7 +42,9 @@ export function initOverlay() {
 
     if (currentDetails) {
         pendingDetails = { itemKey: currentItemKey, details: currentDetails };
-        triggerContentReveal();
+        if (isOverlayReady()) {
+            triggerContentReveal();
+        }
     }
 }
 
@@ -49,7 +55,6 @@ export function initOverlay() {
 export function animateOverlaySelectionChange() {
     if (!overlayRoot) return;
 
-    // Reset any ongoing animation so we can retrigger it.
     overlayRoot.classList.remove('ui-overlay-collapsed');
     void overlayRoot.offsetWidth; // force reflow
 
@@ -78,7 +83,7 @@ export function configureOverlay(updater) {
 /**
  * Update overlay information for the currently selected asset.
  * @param {string} itemKey
- * @param {{ displayName: string, price: number, calories: number, deliveryMinutes: number }} details
+ * @param {{ displayName: string, price: number, calories: number }} details
  */
 export function updateOverlayContent(itemKey, details) {
     currentDetails = details;
@@ -105,7 +110,7 @@ function renderOverlayContent(itemKey, details) {
                 ${createMetaItem('calories', 'Energy', `${details.calories} kcal`)}
             </div>
             <div class="food-controls">
-                <div class="quantity-control" role="group" aria-label="Quantity">
+                <div class="quantity-control is-hidden" data-quantity-control role="group" aria-label="Quantity">
                     <button class="quantity-button" type="button" data-quantity-action="decrement" aria-label="Decrease quantity">
                         ${getIcon('minus')}
                     </button>
@@ -121,7 +126,7 @@ function renderOverlayContent(itemKey, details) {
 
 function createMetaItem(type, label, value) {
     return `
-        <div class="food-meta-item">
+        <div class="food-meta-item is-hidden" data-meta-item="${type}">
             <span class="food-meta-icon" aria-hidden="true">${getIcon(type)}</span>
             <span class="food-meta-values">
                 <span class="food-meta-label">${label}</span>
@@ -165,15 +170,8 @@ function getIcon(type) {
                     <path d="M11 6a1 1 0 0 1 2 0v5h5a1 1 0 1 1 0 2h-5v5a1 1 0 1 1-2 0v-5H6a1 1 0 1 1 0-2h5V6Z"/>
                 </svg>
             `;
-        case 'delivery':
         default:
-            return `
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="7" fill="currentColor" fill-opacity="0.12"/>
-                    <circle cx="12" cy="12" r="7"/>
-                    <path d="M12 8.2V12l2.4 2.4"/>
-                </svg>
-            `;
+            return '';
     }
 }
 
@@ -198,7 +196,7 @@ function handleOverlayClick(event) {
     }
 
     quantityState.set(currentItemKey, quantity);
-    const valueEl = overlayContent.querySelector('[data-quantity-value]');
+    const valueEl = overlayContent?.querySelector('[data-quantity-value]');
     if (valueEl) {
         valueEl.textContent = `${quantity}`;
     }
@@ -217,7 +215,7 @@ function isOverlayReady() {
 }
 
 function handleOverlayTransitionEnd(event) {
-    if (!overlayRoot || event.propertyName !== 'transform') return;
+    if (!overlayRoot || event.target !== overlayRoot || event.propertyName !== 'transform') return;
     const collapsed = overlayRoot.classList.contains('ui-overlay-collapsed');
 
     if (!collapsed && isExpanding) {
@@ -235,6 +233,8 @@ function triggerContentReveal() {
     pendingDetails = null;
 
     renderOverlayContent(itemKey, details);
+    lockOverlayHeight(details.displayName);
+    setMetaHidden(true);
 
     requestAnimationFrame(() => {
         startTypewriter(details.displayName);
@@ -245,47 +245,118 @@ function startTypewriter(text) {
     if (!overlayContent) return;
 
     const nameEl = overlayContent.querySelector('[data-food-name]');
-    const metaRow = overlayContent.querySelector('[data-meta-row]');
-
     if (!nameEl) return;
 
     cancelTyping();
+    setMetaHidden(true);
     nameEl.textContent = '';
-    if (metaRow) {
-        metaRow.classList.add('is-hidden');
-    }
 
-    let index = 0;
-    const step = () => {
-        if (!nameEl) return;
-        nameEl.textContent = text.slice(0, index);
+    const duration = TYPE_BASE_DURATION_MS + text.length * TYPE_PER_CHAR_MS;
+    const startTime = performance.now();
 
-        if (index < text.length) {
-            index += 1;
-            typingTimeout = window.setTimeout(step, TYPE_INTERVAL_MS);
-        } else if (metaRow) {
-            metaRow.classList.remove('is-hidden');
+    const step = (now) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(1, elapsed / duration);
+        const eased = easeOutCubic(progress);
+        const chars = text.length === 0 ? 0 : Math.max(1, Math.round(eased * text.length));
+        nameEl.textContent = text.slice(0, chars);
+
+        if (progress < 1) {
+            typingFrame = requestAnimationFrame(step);
+        } else {
+            nameEl.textContent = text;
+            typingFrame = null;
+            revealMetaSequential();
         }
     };
 
-    step();
+    typingFrame = requestAnimationFrame(step);
 }
 
 function hideCurrentContent() {
     if (!overlayContent) return;
-
     const nameEl = overlayContent.querySelector('[data-food-name]');
-    const metaRow = overlayContent.querySelector('[data-meta-row]');
-
     if (nameEl) nameEl.textContent = '';
-    if (metaRow) metaRow.classList.add('is-hidden');
+    setMetaHidden(true);
 }
 
 function cancelTyping() {
-    if (typingTimeout !== null) {
-        window.clearTimeout(typingTimeout);
-        typingTimeout = null;
+    if (typingFrame !== null) {
+        cancelAnimationFrame(typingFrame);
+        typingFrame = null;
     }
+}
+
+function revealMetaSequential() {
+    const { metaRow, metaItems, quantityControl } = getMetaElements();
+    if (!metaRow) return;
+
+    metaRow.classList.remove('is-hidden');
+
+    const priceItem = metaItems.find(item => item.dataset.metaItem === 'price');
+    const energyItem = metaItems.find(item => item.dataset.metaItem === 'calories');
+    const others = metaItems.filter(item => item !== priceItem && item !== energyItem);
+
+    const sequence = [priceItem, energyItem, ...others, quantityControl].filter(Boolean);
+
+    sequence.forEach((element, index) => {
+        window.setTimeout(() => element.classList.remove('is-hidden'), index * META_STAGGER_MS);
+    });
+}
+
+function lockOverlayHeight(displayName) {
+    if (!overlayRoot || !overlayContent) return;
+
+    const nameEl = overlayContent.querySelector('[data-food-name]');
+    if (!nameEl) return;
+
+    const { metaRow, metaItems, quantityControl } = getMetaElements();
+
+    const prevName = nameEl.textContent;
+    const prevRowHidden = metaRow ? metaRow.classList.contains('is-hidden') : false;
+    const prevItemHidden = metaItems.map(item => item.classList.contains('is-hidden'));
+    const prevQuantityHidden = quantityControl ? quantityControl.classList.contains('is-hidden') : false;
+
+    nameEl.textContent = displayName;
+    if (metaRow) metaRow.classList.remove('is-hidden');
+    metaItems.forEach(item => item.classList.remove('is-hidden'));
+    if (quantityControl) quantityControl.classList.remove('is-hidden');
+
+    const measuredHeight = Math.ceil(overlayRoot.getBoundingClientRect().height);
+
+    nameEl.textContent = prevName;
+    if (metaRow) metaRow.classList.toggle('is-hidden', prevRowHidden);
+    metaItems.forEach((item, idx) => item.classList.toggle('is-hidden', prevItemHidden[idx]));
+    if (quantityControl) quantityControl.classList.toggle('is-hidden', prevQuantityHidden);
+
+    if (!lockedHeight || Math.abs(lockedHeight - measuredHeight) > 1) {
+        lockedHeight = measuredHeight;
+        overlayRoot.style.height = `${measuredHeight}px`;
+        overlayRoot.style.minHeight = `${measuredHeight}px`;
+        overlayRoot.style.maxHeight = `${measuredHeight}px`;
+    }
+}
+
+function getMetaElements() {
+    if (!overlayContent) {
+        return { metaRow: null, metaItems: [], quantityControl: null };
+    }
+    const metaRow = overlayContent.querySelector('[data-meta-row]');
+    const metaItems = metaRow ? Array.from(metaRow.querySelectorAll('.food-meta-item')) : [];
+    const quantityControl = overlayContent.querySelector('[data-quantity-control]');
+    return { metaRow, metaItems, quantityControl };
+}
+
+function setMetaHidden(hidden) {
+    const { metaRow, metaItems, quantityControl } = getMetaElements();
+    if (metaRow) metaRow.classList.toggle('is-hidden', hidden);
+    metaItems.forEach(item => item.classList.toggle('is-hidden', hidden));
+    if (quantityControl) quantityControl.classList.toggle('is-hidden', hidden);
+}
+
+function easeOutCubic(t) {
+    const inv = 1 - t;
+    return 1 - inv * inv * inv;
 }
 
 
