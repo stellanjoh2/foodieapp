@@ -3,12 +3,17 @@ let overlayContent = null;
 
 const COLLAPSE_DURATION_MS = 220; // matches CSS transition timing
 const HOLD_DURATION_MS = 80; // time to stay collapsed before expanding
+const TYPE_INTERVAL_MS = 45;
 const MIN_QUANTITY = 1;
 const MAX_QUANTITY = 9;
 
 let expandTimeout = null;
 let currentDetails = null;
 let currentItemKey = null;
+let pendingDetails = null;
+let typingTimeout = null;
+let isExpanding = false;
+
 const quantityState = new Map();
 
 /**
@@ -25,13 +30,15 @@ export function initOverlay() {
     }
 
     overlayRoot.classList.remove('ui-overlay-collapsed');
+    overlayRoot.addEventListener('transitionend', handleOverlayTransitionEnd);
 
     if (overlayContent) {
         overlayContent.addEventListener('click', handleOverlayClick);
     }
 
     if (currentDetails) {
-        renderOverlayContent(currentItemKey, currentDetails);
+        pendingDetails = { itemKey: currentItemKey, details: currentDetails };
+        triggerContentReveal();
     }
 }
 
@@ -46,10 +53,15 @@ export function animateOverlaySelectionChange() {
     overlayRoot.classList.remove('ui-overlay-collapsed');
     void overlayRoot.offsetWidth; // force reflow
 
+    cancelTyping();
+    hideCurrentContent();
+
     overlayRoot.classList.add('ui-overlay-collapsed');
+    isExpanding = false;
 
     window.clearTimeout(expandTimeout);
     expandTimeout = window.setTimeout(() => {
+        isExpanding = true;
         overlayRoot.classList.remove('ui-overlay-collapsed');
     }, COLLAPSE_DURATION_MS + HOLD_DURATION_MS);
 }
@@ -71,8 +83,11 @@ export function configureOverlay(updater) {
 export function updateOverlayContent(itemKey, details) {
     currentDetails = details;
     currentItemKey = itemKey;
-    if (!overlayContent || !details) return;
-    renderOverlayContent(itemKey, details);
+    pendingDetails = { itemKey, details };
+
+    if (isOverlayReady()) {
+        triggerContentReveal();
+    }
 }
 
 function renderOverlayContent(itemKey, details) {
@@ -82,9 +97,9 @@ function renderOverlayContent(itemKey, details) {
 
     overlayContent.innerHTML = `
         <div class="food-header">
-            <span class="food-name">${details.displayName}</span>
+            <span class="food-name" data-food-name></span>
         </div>
-        <div class="food-meta-row">
+        <div class="food-meta-row is-hidden" data-meta-row>
             <div class="food-meta">
                 ${createMetaItem('price', 'Price', formatPrice(details.price))}
                 ${createMetaItem('calories', 'Energy', `${details.calories} kcal`)}
@@ -119,11 +134,6 @@ function createMetaItem(type, label, value) {
 function formatPrice(price) {
     const rounded = Math.round(price);
     return `$${rounded}`;
-}
-
-function formatDelivery(minutes) {
-    if (minutes <= 0) return 'Ready now';
-    return `${minutes} min`;
 }
 
 function getIcon(type) {
@@ -200,6 +210,82 @@ function getQuantity(itemKey) {
         quantityState.set(itemKey, MIN_QUANTITY);
     }
     return quantityState.get(itemKey);
+}
+
+function isOverlayReady() {
+    return overlayRoot && !overlayRoot.classList.contains('ui-overlay-collapsed') && !isExpanding;
+}
+
+function handleOverlayTransitionEnd(event) {
+    if (!overlayRoot || event.propertyName !== 'transform') return;
+    const collapsed = overlayRoot.classList.contains('ui-overlay-collapsed');
+
+    if (!collapsed && isExpanding) {
+        isExpanding = false;
+        if (pendingDetails) {
+            triggerContentReveal();
+        }
+    }
+}
+
+function triggerContentReveal() {
+    if (!pendingDetails || !overlayContent) return;
+
+    const { itemKey, details } = pendingDetails;
+    pendingDetails = null;
+
+    renderOverlayContent(itemKey, details);
+
+    requestAnimationFrame(() => {
+        startTypewriter(details.displayName);
+    });
+}
+
+function startTypewriter(text) {
+    if (!overlayContent) return;
+
+    const nameEl = overlayContent.querySelector('[data-food-name]');
+    const metaRow = overlayContent.querySelector('[data-meta-row]');
+
+    if (!nameEl) return;
+
+    cancelTyping();
+    nameEl.textContent = '';
+    if (metaRow) {
+        metaRow.classList.add('is-hidden');
+    }
+
+    let index = 0;
+    const step = () => {
+        if (!nameEl) return;
+        nameEl.textContent = text.slice(0, index);
+
+        if (index < text.length) {
+            index += 1;
+            typingTimeout = window.setTimeout(step, TYPE_INTERVAL_MS);
+        } else if (metaRow) {
+            metaRow.classList.remove('is-hidden');
+        }
+    };
+
+    step();
+}
+
+function hideCurrentContent() {
+    if (!overlayContent) return;
+
+    const nameEl = overlayContent.querySelector('[data-food-name]');
+    const metaRow = overlayContent.querySelector('[data-meta-row]');
+
+    if (nameEl) nameEl.textContent = '';
+    if (metaRow) metaRow.classList.add('is-hidden');
+}
+
+function cancelTyping() {
+    if (typingTimeout !== null) {
+        window.clearTimeout(typingTimeout);
+        typingTimeout = null;
+    }
 }
 
 

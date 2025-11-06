@@ -92,6 +92,15 @@
             justify-content: space-between;
             gap: 1.2rem;
             flex-wrap: wrap;
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 200ms ease, transform 200ms ease;
+        }
+
+        .food-meta-row.is-hidden {
+            opacity: 0;
+            transform: translateY(18px);
+            pointer-events: none;
         }
 
         .food-name {
