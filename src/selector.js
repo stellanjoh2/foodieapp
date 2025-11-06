@@ -159,7 +159,7 @@ export async function initSelector(scene, camera) {
     // Position camera - adjust for mobile vs desktop
     // Mobile: closer camera to fill screen with single food item
     // Desktop: showing selected item with partially cropped adjacent items
-    const isMobileDevice = isMobile();
+    // Reuse isMobileDevice from above
     if (isMobileDevice) {
         // Mobile: closer camera, centered vertically for single item focus
         camera.position.set(0, 0, 2.2); // Closer for mobile - single item fills screen
