@@ -3,14 +3,14 @@ let overlayContent = null;
 
 const COLLAPSE_DURATION_MS = 220; // matches CSS transition timing
 const HOLD_DURATION_MS = 80; // time to stay collapsed before expanding
+const NAME_FADE_DURATION_MS = 220;
+const META_STAGGER_MS = 140;
 const MIN_QUANTITY = 1;
 const MAX_QUANTITY = 9;
-const TYPE_BASE_DURATION_MS = 240;
-const TYPE_PER_CHAR_MS = 18;
-const META_STAGGER_MS = 140;
 
 let expandTimeout = null;
-let typingFrame = null;
+let nameRevealTimeout = null;
+const metaRevealTimeouts = [];
 let lockedHeight = null;
 let currentDetails = null;
 let currentItemKey = null;
@@ -58,7 +58,7 @@ export function animateOverlaySelectionChange() {
     overlayRoot.classList.remove('ui-overlay-collapsed');
     void overlayRoot.offsetWidth; // force reflow
 
-    cancelTyping();
+    cancelPendingAnimations();
     hideCurrentContent();
 
     overlayRoot.classList.add('ui-overlay-collapsed');
@@ -235,55 +235,40 @@ function triggerContentReveal() {
     renderOverlayContent(itemKey, details);
     lockOverlayHeight(details.displayName);
     setMetaHidden(true);
-
-    requestAnimationFrame(() => {
-        startTypewriter(details.displayName);
-    });
-}
-
-function startTypewriter(text) {
-    if (!overlayContent) return;
+    setNameVisible(false);
 
     const nameEl = overlayContent.querySelector('[data-food-name]');
     if (!nameEl) return;
+    nameEl.textContent = details.displayName;
 
-    cancelTyping();
-    setMetaHidden(true);
-    nameEl.textContent = '';
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            setNameVisible(true);
+            scheduleMetaReveal();
+        });
+    });
+}
 
-    const duration = TYPE_BASE_DURATION_MS + text.length * TYPE_PER_CHAR_MS;
-    const startTime = performance.now();
-
-    const step = (now) => {
-        const elapsed = now - startTime;
-        const progress = Math.min(1, elapsed / duration);
-        const eased = easeOutCubic(progress);
-        const chars = text.length === 0 ? 0 : Math.max(1, Math.round(eased * text.length));
-        nameEl.textContent = text.slice(0, chars);
-
-        if (progress < 1) {
-            typingFrame = requestAnimationFrame(step);
-        } else {
-            nameEl.textContent = text;
-            typingFrame = null;
-            revealMetaSequential();
-        }
-    };
-
-    typingFrame = requestAnimationFrame(step);
+function scheduleMetaReveal() {
+    nameRevealTimeout = window.setTimeout(() => {
+        revealMetaSequential();
+    }, NAME_FADE_DURATION_MS);
 }
 
 function hideCurrentContent() {
     if (!overlayContent) return;
-    const nameEl = overlayContent.querySelector('[data-food-name]');
-    if (nameEl) nameEl.textContent = '';
+    setNameVisible(false);
     setMetaHidden(true);
 }
 
-function cancelTyping() {
-    if (typingFrame !== null) {
-        cancelAnimationFrame(typingFrame);
-        typingFrame = null;
+function cancelPendingAnimations() {
+    if (nameRevealTimeout !== null) {
+        window.clearTimeout(nameRevealTimeout);
+        nameRevealTimeout = null;
+    }
+    while (metaRevealTimeouts.length) {
+        const timeoutId = metaRevealTimeouts.pop();
+        window.clearTimeout(timeoutId);
     }
 }
 
@@ -300,7 +285,10 @@ function revealMetaSequential() {
     const sequence = [priceItem, energyItem, ...others, quantityControl].filter(Boolean);
 
     sequence.forEach((element, index) => {
-        window.setTimeout(() => element.classList.remove('is-hidden'), index * META_STAGGER_MS);
+        const timeoutId = window.setTimeout(() => {
+            element.classList.remove('is-hidden');
+        }, index * META_STAGGER_MS);
+        metaRevealTimeouts.push(timeoutId);
     });
 }
 
@@ -352,6 +340,12 @@ function setMetaHidden(hidden) {
     if (metaRow) metaRow.classList.toggle('is-hidden', hidden);
     metaItems.forEach(item => item.classList.toggle('is-hidden', hidden));
     if (quantityControl) quantityControl.classList.toggle('is-hidden', hidden);
+}
+
+function setNameVisible(visible) {
+    const nameEl = overlayContent?.querySelector('[data-food-name]');
+    if (!nameEl) return;
+    nameEl.classList.toggle('is-visible', visible);
 }
 
 function easeOutCubic(t) {
