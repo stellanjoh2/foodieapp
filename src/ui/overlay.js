@@ -88,7 +88,6 @@ function renderOverlayContent(itemKey, details) {
             <div class="food-meta">
                 ${createMetaItem('price', 'Price', formatPrice(details.price))}
                 ${createMetaItem('calories', 'Energy', `${details.calories} kcal`)}
-                ${createMetaItem('delivery', 'Delivery', formatDelivery(details.deliveryMinutes))}
             </div>
             <div class="food-controls">
                 <div class="quantity-control" role="group" aria-label="Quantity">
