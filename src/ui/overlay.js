@@ -86,6 +86,8 @@ export function configureOverlay(updater) {
  * @param {{ displayName: string, price: number, calories: number }} details
  */
 export function updateOverlayContent(itemKey, details) {
+    cancelPendingAnimations();
+
     currentDetails = details;
     currentItemKey = itemKey;
     pendingDetails = { itemKey, details };
@@ -233,9 +235,9 @@ function triggerContentReveal() {
     pendingDetails = null;
 
     renderOverlayContent(itemKey, details);
-    lockOverlayHeight(details.displayName);
-    setMetaHidden(true);
     setNameVisible(false);
+    setMetaHidden(true);
+    lockOverlayHeight(details.displayName);
 
     const nameEl = overlayContent.querySelector('[data-food-name]');
     if (!nameEl) return;
@@ -270,6 +272,8 @@ function cancelPendingAnimations() {
         const timeoutId = metaRevealTimeouts.pop();
         window.clearTimeout(timeoutId);
     }
+    setMetaHidden(true);
+    setNameVisible(false);
 }
 
 function revealMetaSequential() {
@@ -295,27 +299,23 @@ function revealMetaSequential() {
 function lockOverlayHeight(displayName) {
     if (!overlayRoot || !overlayContent) return;
 
-    const nameEl = overlayContent.querySelector('[data-food-name]');
-    if (!nameEl) return;
+    const tempWrapper = document.createElement('div');
+    tempWrapper.style.position = 'absolute';
+    tempWrapper.style.visibility = 'hidden';
+    tempWrapper.style.pointerEvents = 'none';
+    tempWrapper.style.left = '0';
+    tempWrapper.style.top = '0';
+    tempWrapper.style.transform = 'none';
+    tempWrapper.style.width = `${overlayContent.getBoundingClientRect().width}px`;
 
-    const { metaRow, metaItems, quantityControl } = getMetaElements();
+    const tempContent = overlayContent.cloneNode(true);
+    tempContent.querySelectorAll('.is-hidden').forEach(el => el.classList.remove('is-hidden'));
+    tempWrapper.appendChild(tempContent);
+    document.body.appendChild(tempWrapper);
 
-    const prevName = nameEl.textContent;
-    const prevRowHidden = metaRow ? metaRow.classList.contains('is-hidden') : false;
-    const prevItemHidden = metaItems.map(item => item.classList.contains('is-hidden'));
-    const prevQuantityHidden = quantityControl ? quantityControl.classList.contains('is-hidden') : false;
+    const measuredHeight = Math.ceil(tempWrapper.getBoundingClientRect().height);
 
-    nameEl.textContent = displayName;
-    if (metaRow) metaRow.classList.remove('is-hidden');
-    metaItems.forEach(item => item.classList.remove('is-hidden'));
-    if (quantityControl) quantityControl.classList.remove('is-hidden');
-
-    const measuredHeight = Math.ceil(overlayRoot.getBoundingClientRect().height);
-
-    nameEl.textContent = prevName;
-    if (metaRow) metaRow.classList.toggle('is-hidden', prevRowHidden);
-    metaItems.forEach((item, idx) => item.classList.toggle('is-hidden', prevItemHidden[idx]));
-    if (quantityControl) quantityControl.classList.toggle('is-hidden', prevQuantityHidden);
+    document.body.removeChild(tempWrapper);
 
     if (!lockedHeight || Math.abs(lockedHeight - measuredHeight) > 1) {
         lockedHeight = measuredHeight;
