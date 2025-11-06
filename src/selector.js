@@ -162,7 +162,7 @@ export async function initSelector(scene, camera) {
     // Reuse isMobileDevice from above
     if (isMobileDevice) {
         // Mobile: closer camera, centered vertically for single item focus
-        camera.position.set(0, 0, 2.2); // Closer for mobile - single item fills screen
+        camera.position.set(0, 0, 1.76); // 20% closer than 2.2
     } else {
         // Desktop: showing selected item with partially cropped adjacent items
         camera.position.set(0, -0.40, 2.66); // Moved down 15% total (relative to view distance)
@@ -242,8 +242,8 @@ function updateSelection() {
         // Scale selected item 1.5x compared to non-selected (1.0x)
         const targetScale = isSelected ? 1.5 : 1.0;
         
-        // Rotation speed: selected items spin 1.5x faster, unselected spin at 0.5x
-        const targetRotationSpeed = isSelected ? 1.5 : 0.5;
+        // Rotation speed: selected items spin 2.0x, unselected spin at 0.5x
+        const targetRotationSpeed = isSelected ? 2.0 : 0.5;
         
         // Set target scale - smooth interpolation will handle the transition
         // Don't immediately set scale, let the update loop handle it smoothly
@@ -339,7 +339,7 @@ export function updateSelector(deltaTime = 0.016) {
             // Add gentle floating/swaying animation (up and down)
             // Each item has a slight phase offset based on index for natural variation
             const phaseOffset = index * 0.5; // Offset each item slightly for natural variation
-            const floatSpeed = 0.8; // Speed of floating (cycles per second)
+            const floatSpeed = 1.2; // 50% faster floating (cycles per second)
             const floatAmplitude = 0.05; // Gentle amplitude (5cm up/down)
             
             // Gentle sine wave for smooth floating motion
@@ -357,7 +357,7 @@ export function updateSelector(deltaTime = 0.016) {
         }
     });
     
-    // Make ALL items spin around their own Y axis
+    // Make items spin around their own axis
     // Use frame-rate independent rotation with variable speed based on selection
     const baseRotationSpeed = 0.5; // radians per second (base speed)
     
@@ -384,7 +384,12 @@ export function updateSelector(deltaTime = 0.016) {
         
         // Apply rotation with current speed multiplier
         const actualRotationSpeed = baseRotationSpeed * newSpeed;
-        mesh.rotation.y += actualRotationSpeed * clampedDelta;
+        if (item.name === 'donut') {
+            // Donut: flat spin around Z axis
+            mesh.rotation.z += actualRotationSpeed * clampedDelta;
+        } else {
+            mesh.rotation.y += actualRotationSpeed * clampedDelta;
+        }
     });
 }
 

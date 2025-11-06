@@ -361,9 +361,9 @@ export function getFoodItem(itemName) {
         const rimLightColor = new THREE.Color(0xf0573a); // Middle of VelvetSun gradient (bright red-orange)
         const hsl = {};
         rimLightColor.getHSL(hsl);
-        // Increase saturation and brightness slightly for rim lighting (make it more vibrant)
+        // Increase saturation and brightness for rim lighting
         hsl.s = Math.min(1.0, hsl.s * 1.2); // Increase saturation by 20%
-        hsl.l = Math.min(1.0, hsl.l * 1.3); // Increase lightness by 30% to make it brighter/more visible
+        hsl.l = Math.min(1.0, hsl.l * 1.625); // Brighten 25% more over previous 1.3 (1.3*1.25=1.625)
         // Keep the warm red-orange hue (already correct from the gradient color)
         rimLightColor.setHSL(hsl.h, hsl.s, hsl.l);
         
