@@ -1,55 +1,55 @@
 export const foodDetails = {
     icecream: {
         displayName: 'Velvet Sundae',
-        price: 4.75,
+        price: 5,
         calories: 320,
         deliveryMinutes: 9
     },
     taco: {
         displayName: 'Sunset Taco',
-        price: 5.90,
+        price: 6,
         calories: 410,
         deliveryMinutes: 11
     },
     donut: {
         displayName: 'Peach Swirl Donut',
-        price: 3.40,
+        price: 3,
         calories: 285,
         deliveryMinutes: 8
     },
     fries: {
         displayName: 'Glazed Fries',
-        price: 3.85,
+        price: 4,
         calories: 360,
         deliveryMinutes: 7
     },
     hotdog: {
         displayName: 'Cherry Glow Dog',
-        price: 4.30,
+        price: 4,
         calories: 450,
         deliveryMinutes: 10
     },
     burger: {
         displayName: 'Aurora Burger',
-        price: 7.80,
+        price: 8,
         calories: 620,
         deliveryMinutes: 12
     },
     chicken: {
         displayName: 'Honey Drum Bucket',
-        price: 8.60,
+        price: 9,
         calories: 540,
         deliveryMinutes: 14
     },
     coffee: {
         displayName: 'Caramel Cloud Frappe',
-        price: 4.10,
+        price: 4,
         calories: 210,
         deliveryMinutes: 6
     },
     pizza: {
         displayName: 'Golden Slice',
-        price: 6.50,
+        price: 6,
         calories: 520,
         deliveryMinutes: 13
     }

@@ -117,7 +117,8 @@ function createMetaItem(type, label, value) {
 }
 
 function formatPrice(price) {
-    return `$${price.toFixed(2)}`;
+    const rounded = Math.round(price);
+    return `$${rounded}`;
 }
 
 function formatDelivery(minutes) {
