@@ -84,20 +84,22 @@ function renderOverlayContent(itemKey, details) {
         <div class="food-header">
             <span class="food-name">${details.displayName}</span>
         </div>
-        <div class="food-meta">
-            ${createMetaItem('price', 'Price', formatPrice(details.price))}
-            ${createMetaItem('calories', 'Energy', `${details.calories} kcal`)}
-            ${createMetaItem('delivery', 'Delivery', formatDelivery(details.deliveryMinutes))}
-        </div>
-        <div class="food-controls">
-            <div class="quantity-control" role="group" aria-label="Quantity">
-                <button class="quantity-button" type="button" data-quantity-action="decrement" aria-label="Decrease quantity">
-                    ${getIcon('minus')}
-                </button>
-                <span class="quantity-value" data-quantity-value>×${quantity}</span>
-                <button class="quantity-button" type="button" data-quantity-action="increment" aria-label="Increase quantity">
-                    ${getIcon('plus')}
-                </button>
+        <div class="food-meta-row">
+            <div class="food-meta">
+                ${createMetaItem('price', 'Price', formatPrice(details.price))}
+                ${createMetaItem('calories', 'Energy', `${details.calories} kcal`)}
+                ${createMetaItem('delivery', 'Delivery', formatDelivery(details.deliveryMinutes))}
+            </div>
+            <div class="food-controls">
+                <div class="quantity-control" role="group" aria-label="Quantity">
+                    <button class="quantity-button" type="button" data-quantity-action="decrement" aria-label="Decrease quantity">
+                        ${getIcon('minus')}
+                    </button>
+                    <span class="quantity-value" data-quantity-value>×${quantity}</span>
+                    <button class="quantity-button" type="button" data-quantity-action="increment" aria-label="Increase quantity">
+                        ${getIcon('plus')}
+                    </button>
+                </div>
             </div>
         </div>
     `;
@@ -157,14 +159,9 @@ function getIcon(type) {
         default:
             return `
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3.5 15.5h13.25"/>
-                    <path d="M16.75 12h2.75l1.5 2.5v3h-3.25"/>
-                    <circle cx="8" cy="17.5" r="1.8" fill="currentColor" fill-opacity="0.18"/>
-                    <circle cx="8" cy="17.5" r="1.8"/>
-                    <circle cx="18" cy="17.5" r="1.8" fill="currentColor" fill-opacity="0.18"/>
-                    <circle cx="18" cy="17.5" r="1.8"/>
-                    <path d="M13.5 9.5l-1.5 3.5"/>
-                    <path d="M6.5 15.5l2-5h5"/>
+                    <circle cx="12" cy="12" r="7" fill="currentColor" fill-opacity="0.12"/>
+                    <circle cx="12" cy="12" r="7"/>
+                    <path d="M12 8.2V12l2.4 2.4"/>
                 </svg>
             `;
     }
