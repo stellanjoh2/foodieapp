@@ -94,7 +94,7 @@ function renderOverlayContent(itemKey, details) {
                     <button class="quantity-button" type="button" data-quantity-action="decrement" aria-label="Decrease quantity">
                         ${getIcon('minus')}
                     </button>
-                    <span class="quantity-value" data-quantity-value>×${quantity}</span>
+                    <span class="quantity-value" data-quantity-value>${quantity}</span>
                     <button class="quantity-button" type="button" data-quantity-action="increment" aria-label="Increase quantity">
                         ${getIcon('plus')}
                     </button>
@@ -190,7 +190,7 @@ function handleOverlayClick(event) {
     quantityState.set(currentItemKey, quantity);
     const valueEl = overlayContent.querySelector('[data-quantity-value]');
     if (valueEl) {
-        valueEl.textContent = `×${quantity}`;
+        valueEl.textContent = `${quantity}`;
     }
 }
 
