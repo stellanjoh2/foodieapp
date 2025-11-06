@@ -6,8 +6,9 @@
 import { initScene, startRenderLoop, getScene, getCamera, getRenderer } from './scene.js';
 import { initModelLoader, loadModel, getAvailableFoodItems } from './models.js';
 import { initControls } from './controls.js';
-import { initSelector, selectPrevious, selectNext, updateSelector, getSelectedItem } from './selector.js';
+import { initSelector, selectPrevious, selectNext, updateSelector, getSelectedItem, getSelectedIndex, getItemCount } from './selector.js';
 import { initPostProcessing, render as renderPostProcessing } from './postprocessing.js';
+import { initOverlay, animateOverlaySelectionChange } from './ui/overlay.js';
 
 // Application state
 const state = {
@@ -21,6 +22,9 @@ const state = {
 async function init() {
     const container = document.getElementById('canvas-container');
     const loadingEl = document.getElementById('loading');
+
+    // Prepare UI overlay (frosted panel) for future controls/info
+    initOverlay();
 
     try {
         // Initialize scene
@@ -76,8 +80,13 @@ async function init() {
  */
 function handleNavigateLeft() {
     if (!state.initialized) return;
-    
+
+    const currentIndex = getSelectedIndex();
+    if (currentIndex <= 0) return; // hard stop reached
+
+    animateOverlaySelectionChange();
     selectPrevious();
+
     const selected = getSelectedItem();
     if (selected) {
         console.log('Selected:', selected.name);
@@ -89,8 +98,14 @@ function handleNavigateLeft() {
  */
 function handleNavigateRight() {
     if (!state.initialized) return;
-    
+
+    const currentIndex = getSelectedIndex();
+    const itemCount = getItemCount();
+    if (currentIndex >= itemCount - 1) return; // hard stop reached
+
+    animateOverlaySelectionChange();
     selectNext();
+
     const selected = getSelectedItem();
     if (selected) {
         console.log('Selected:', selected.name);
