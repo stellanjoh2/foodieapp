@@ -41,8 +41,30 @@
             left: 0;
             right: 0;
             padding: 2rem;
-            z-index: 10;
+            z-index: 1000;
             pointer-events: none;
+        }
+
+        /* Temporary frosted glass popup (internal test) */
+        .frosted-popup {
+            position: relative;
+            margin: 0 auto 4.8rem auto; /* doubled again */
+            width: 50vw; /* reduced width to 50% of screen */
+            min-height: 18vh;
+            border-radius: 28px; /* very rounded, Nintendo-like */
+            background: rgba(255, 255, 255, 0.10); /* 10% white */
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+            /* drop shadow removed */
+            border: 1px solid rgba(255,255,255,0.18);
+            pointer-events: auto;
+        }
+
+        .frosted-content {
+            padding: 1.2rem 1.4rem;
+            color: rgba(255,255,255,0.85);
+            font-weight: 500;
+            text-shadow: 0 1px 0 rgba(0,0,0,0.2);
         }
     </style>
 </head>
@@ -50,7 +72,12 @@
     <div id="canvas-container">
         <div id="loading">Loading...</div>
         <div id="ui-overlay">
-            <!-- Item selection UI will go here -->
+            <!-- Temporary internal test: frosted glass popup -->
+            <div class="frosted-popup" aria-hidden="true">
+                <div class="frosted-content">
+                    Frosted UI test — this should blur the 3D scene behind while staying nearly transparent.
+                </div>
+            </div>
         </div>
     </div>
 
