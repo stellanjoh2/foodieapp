@@ -34,7 +34,7 @@ export function initOverlay() {
 
     overlayRoot.classList.remove('ui-overlay-collapsed');
     overlayRoot.addEventListener('transitionend', handleOverlayTransitionEnd);
-    overlayRoot.style.overflow = 'hidden';
+    overlayRoot.style.overflow = 'visible';
 
     if (overlayContent) {
         overlayContent.addEventListener('click', handleOverlayClick);
@@ -313,7 +313,7 @@ function lockOverlayHeight(displayName) {
     tempWrapper.appendChild(tempContent);
     document.body.appendChild(tempWrapper);
 
-    const measuredHeight = Math.ceil(tempWrapper.getBoundingClientRect().height);
+    const measuredHeight = Math.ceil(tempWrapper.getBoundingClientRect().height + 12);
 
     document.body.removeChild(tempWrapper);
 
