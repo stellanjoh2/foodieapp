@@ -386,12 +386,7 @@ export function updateSelector(deltaTime = 0.016) {
         
         // Apply rotation with current speed multiplier
         const actualRotationSpeed = baseRotationSpeed * newSpeed;
-        if (item.name === 'donut') {
-            // Donut: flat spin around Z axis
-            mesh.rotation.z += actualRotationSpeed * clampedDelta;
-        } else {
-            mesh.rotation.y += actualRotationSpeed * clampedDelta;
-        }
+        mesh.rotation.y += actualRotationSpeed * clampedDelta;
     });
 }
 
