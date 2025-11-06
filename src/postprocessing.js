@@ -7,12 +7,10 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-import { HueSaturationShader } from 'three/addons/shaders/HueSaturationShader.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
 let composer = null;
 let bloomPass = null;
-let hueSaturationPass = null;
 
 /**
  * Vignette shader based on three-vignette-background style
@@ -109,12 +107,6 @@ export function initPostProcessing(renderer, scene, camera) {
         0.8    // Threshold - higher threshold to only bloom very bright specular highlights (0.0 to 1.0)
     );
     composer.addPass(bloomPass);
-
-    // Global saturation boost (+0.15)
-    hueSaturationPass = new ShaderPass(HueSaturationShader);
-    hueSaturationPass.uniforms.hue.value = 0.0;
-    hueSaturationPass.uniforms.saturation.value = 0.15; // +15%
-    composer.addPass(hueSaturationPass);
     
     // Vignette disabled - bloom only
     
