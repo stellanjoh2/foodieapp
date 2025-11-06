@@ -8,7 +8,8 @@ import { initModelLoader, loadModel, getAvailableFoodItems } from './models.js';
 import { initControls } from './controls.js';
 import { initSelector, selectPrevious, selectNext, updateSelector, getSelectedItem, getSelectedIndex, getItemCount } from './selector.js';
 import { initPostProcessing, render as renderPostProcessing } from './postprocessing.js';
-import { initOverlay, animateOverlaySelectionChange } from './ui/overlay.js';
+import { initOverlay, animateOverlaySelectionChange, updateOverlayContent } from './ui/overlay.js';
+import { getFoodDetailsByName } from './data/foodDetails.js';
 
 // Application state
 const state = {
@@ -57,6 +58,9 @@ async function init() {
         const renderer = getRenderer();
         initPostProcessing(renderer, scene, camera);
 
+        // Populate overlay with initial selection
+        updateOverlayWithCurrent();
+
         // Start render loop with post-processing
         startRenderLoop(update, renderPostProcessing);
 
@@ -86,6 +90,7 @@ function handleNavigateLeft() {
 
     animateOverlaySelectionChange();
     selectPrevious();
+    updateOverlayWithCurrent();
 
     const selected = getSelectedItem();
     if (selected) {
@@ -105,6 +110,7 @@ function handleNavigateRight() {
 
     animateOverlaySelectionChange();
     selectNext();
+    updateOverlayWithCurrent();
 
     const selected = getSelectedItem();
     if (selected) {
@@ -125,6 +131,13 @@ function update() {
     
     // Update selector (animations, scrolling, etc.)
     updateSelector(deltaTime);
+}
+
+function updateOverlayWithCurrent() {
+    const selected = getSelectedItem();
+    if (!selected) return;
+    const details = getFoodDetailsByName(selected.name);
+    updateOverlayContent(details);
 }
 
 // Start application when DOM is ready
