@@ -9,6 +9,11 @@ let controls = {
     mouse: { x: 0, y: 0 },
     isDragging: false,
     previousMousePosition: { x: 0, y: 0 },
+    mouseStartX: 0,
+    mouseStartY: 0,
+    mouseStartTime: 0,
+    isMouseSwipe: false,
+    mouseSwipeTriggered: false,
     gamepadIndex: null,
     gamepadConnected: false,
     touchStartX: 0,
@@ -46,12 +51,10 @@ export function initControls(container, onNavigateLeft, onNavigateRight, onRotat
         }
     });
 
-    // Mouse events (for rotation if needed)
-    if (onRotate) {
-        container.addEventListener('mousedown', onMouseDown);
-        container.addEventListener('mousemove', onMouseMove);
-        container.addEventListener('mouseup', onMouseUp);
-    }
+    // Mouse / desktop drag events (for swipe + optional rotation)
+    container.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
 
     if (onSelect) {
         container.addEventListener('click', onMouseClick);
@@ -178,6 +181,11 @@ function startGamepadPolling() {
  */
 function onMouseDown(event) {
     controls.isDragging = true;
+    controls.isMouseSwipe = false;
+    controls.mouseSwipeTriggered = false;
+    controls.mouseStartX = event.clientX;
+    controls.mouseStartY = event.clientY;
+    controls.mouseStartTime = Date.now();
     controls.previousMousePosition = {
         x: event.clientX,
         y: event.clientY
@@ -190,10 +198,18 @@ function onMouseDown(event) {
 function onMouseMove(event) {
     if (!controls.isDragging) return;
 
-    const deltaX = event.clientX - controls.previousMousePosition.x;
-    const deltaY = event.clientY - controls.previousMousePosition.y;
+    const totalDeltaX = event.clientX - controls.mouseStartX;
+    const totalDeltaY = event.clientY - controls.mouseStartY;
+    const absTotalDeltaX = Math.abs(totalDeltaX);
+    const absTotalDeltaY = Math.abs(totalDeltaY);
 
-    if (controls.onRotate) {
+    if (!controls.isMouseSwipe && absTotalDeltaX > Math.abs(totalDeltaY) && absTotalDeltaX > 10) {
+        controls.isMouseSwipe = true;
+    }
+
+    if (!controls.isMouseSwipe && controls.onRotate) {
+        const deltaX = event.clientX - controls.previousMousePosition.x;
+        const deltaY = event.clientY - controls.previousMousePosition.y;
         controls.onRotate(deltaX, deltaY);
     }
 
@@ -206,16 +222,42 @@ function onMouseMove(event) {
 /**
  * Mouse up handler
  */
-function onMouseUp() {
+function onMouseUp(event) {
+    if (!controls.isDragging) {
+        return;
+    }
+
+    const deltaX = event.clientX - controls.mouseStartX;
+    const deltaY = event.clientY - controls.mouseStartY;
+    const absDeltaX = Math.abs(deltaX);
+    const absDeltaY = Math.abs(deltaY);
+    const deltaTime = Math.max(Date.now() - controls.mouseStartTime, 1);
+    const swipeSpeed = absDeltaX / deltaTime; // pixels per ms
+
+    const minSwipeDistance = 50;
+    const minSwipeSpeed = 0.25;
+
+    if (controls.isMouseSwipe && absDeltaX > absDeltaY && absDeltaX > minSwipeDistance && swipeSpeed > minSwipeSpeed) {
+        if (deltaX < 0 && controls.onNavigateRight) {
+            controls.onNavigateRight();
+            controls.mouseSwipeTriggered = true;
+        } else if (deltaX > 0 && controls.onNavigateLeft) {
+            controls.onNavigateLeft();
+            controls.mouseSwipeTriggered = true;
+        }
+    }
+
     controls.isDragging = false;
+    controls.isMouseSwipe = false;
 }
 
 /**
  * Mouse click handler
  */
 function onMouseClick(event) {
-    if (controls.isDragging) {
+    if (controls.isDragging || controls.mouseSwipeTriggered) {
         // Don't trigger select if it was a drag
+        controls.mouseSwipeTriggered = false;
         return;
     }
 

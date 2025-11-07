@@ -3,8 +3,8 @@ let overlayContent = null;
 
 const COLLAPSE_DURATION_MS = 220; // matches CSS transition timing
 const HOLD_DURATION_MS = 80; // time to stay collapsed before expanding
-const NAME_FADE_DURATION_MS = 220;
-const META_STAGGER_MS = 140;
+const NAME_FADE_DURATION_MS = 110;
+const META_STAGGER_MS = 70;
 const MIN_QUANTITY = 1;
 const MAX_QUANTITY = 9;
 
@@ -146,32 +146,13 @@ function formatPrice(price) {
 function getIcon(type) {
     switch (type) {
         case 'price':
-            return `
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 3.5c-4.694 0-8.5 2.313-8.5 5.167 0 2.853 3.806 5.166 8.5 5.166s8.5-2.313 8.5-5.166C20.5 5.813 16.694 3.5 12 3.5Z"/>
-                    <path d="M3.5 8.667V12c0 2.853 3.806 5.166 8.5 5.166S20.5 14.853 20.5 12V8.667"/>
-                    <path d="M3.5 12.333V15.5c0 2.667 3.806 4.834 8.5 4.834s8.5-2.167 8.5-4.834v-3.167"/>
-                </svg>
-            `;
+            return `<img src="Images/coin.PNG" alt="Price icon">`;
         case 'calories':
-            return `
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 20c-4-2.65-6.5-5.42-6.5-8.47 0-2.18 1.56-3.96 3.5-3.96 1.22 0 2.29.65 3 1.67.71-1.02 1.78-1.67 3-1.67 1.94 0 3.5 1.78 3.5 3.96 0 3.05-2.5 5.82-6.5 8.47Z" fill="currentColor" fill-opacity="0.18"/>
-                    <path d="M12 20c-4-2.65-6.5-5.42-6.5-8.47 0-2.18 1.56-3.96 3.5-3.96 1.22 0 2.29.65 3 1.67.71-1.02 1.78-1.67 3-1.67 1.94 0 3.5 1.78 3.5 3.96 0 3.05-2.5 5.82-6.5 8.47Z"/>
-                </svg>
-            `;
+            return `<img src="Images/heart.PNG" alt="Energy icon">`;
         case 'minus':
-            return `
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                    <rect x="6" y="11" width="12" height="2" rx="1" />
-                </svg>
-            `;
+            return `<span aria-hidden="true">−</span>`;
         case 'plus':
-            return `
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M11 6a1 1 0 0 1 2 0v5h5a1 1 0 1 1 0 2h-5v5a1 1 0 1 1-2 0v-5H6a1 1 0 1 1 0-2h5V6Z"/>
-                </svg>
-            `;
+            return `<span aria-hidden="true">+</span>`;
         default:
             return '';
     }
@@ -347,6 +328,7 @@ function setNameVisible(visible) {
     if (!nameEl) return;
     nameEl.classList.toggle('is-visible', visible);
 }
+
 
 function easeOutCubic(t) {
     const inv = 1 - t;
