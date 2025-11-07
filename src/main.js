@@ -16,7 +16,10 @@ const state = {
     initialized: false,
     lastFrameTime: performance.now(),
     audio: null,
-    isMusicPlaying: false
+    isMusicPlaying: false,
+    sfx: {
+        swipe: null
+    }
 };
 
 /**
@@ -73,6 +76,7 @@ async function init() {
         state.initialized = true;
         state.lastFrameTime = performance.now();
         state.audio = createBackgroundAudio();
+        state.sfx.swipe = createSfxAudio('Sounds/coin-4.wav');
         
         console.log('Application initialized successfully');
         console.log('Use arrow keys or gamepad to navigate items');
@@ -95,6 +99,7 @@ function handleNavigateLeft() {
     animateOverlaySelectionChange();
     selectPrevious();
     updateOverlayWithCurrent();
+    playSwipeSound();
 
     const selected = getSelectedItem();
     if (selected) {
@@ -115,6 +120,7 @@ function handleNavigateRight() {
     animateOverlaySelectionChange();
     selectNext();
     updateOverlayWithCurrent();
+    playSwipeSound();
 
     const selected = getSelectedItem();
     if (selected) {
@@ -155,6 +161,42 @@ function createBackgroundAudio() {
     audio.crossOrigin = 'anonymous';
     audio.volume = 0.45;
     return audio;
+}
+
+function createSfxAudio(src) {
+    if (typeof Audio === 'undefined') {
+        return null;
+    }
+
+    const audio = new Audio(src);
+    audio.preload = 'auto';
+    audio.crossOrigin = 'anonymous';
+    audio.volume = 0.6;
+    return audio;
+}
+
+function playSwipeSound() {
+    if (!state.initialized) return;
+
+    if (!state.sfx.swipe) {
+        state.sfx.swipe = createSfxAudio('Sounds/coin-4.wav');
+    }
+
+    const swipeAudio = state.sfx.swipe;
+    if (!swipeAudio) return;
+
+    try {
+        swipeAudio.currentTime = 0;
+    } catch (error) {
+        console.warn('Unable to reset swipe sound time:', error);
+    }
+
+    const playPromise = swipeAudio.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch((error) => {
+            console.warn('Swipe sound playback prevented:', error);
+        });
+    }
 }
 
 function toggleMusic() {
