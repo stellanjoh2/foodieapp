@@ -30,10 +30,10 @@ let controls = {
  * @param {Function} onRotate - Callback when rotation occurs (deltaX, deltaY) - optional
  * @param {Function} onSelect - Callback when item is selected/clicked - optional
  */
-export function initControls(container, onNavigateLeft, onNavigateRight, onRotate = null, onSelect = null) {
+export function initControls(container, onNavigateLeft, onNavigateRight, onRotate = null, onSelect = null, onToggleMusic = null) {
     // Keyboard events
     window.addEventListener('keydown', (event) => {
-        handleKeyboard(event, onNavigateLeft, onNavigateRight);
+        handleKeyboard(event, onNavigateLeft, onNavigateRight, onToggleMusic);
     });
 
     // Gamepad events
@@ -89,7 +89,7 @@ export function initControls(container, onNavigateLeft, onNavigateRight, onRotat
  * @param {Function} onNavigateLeft - Left navigation callback
  * @param {Function} onNavigateRight - Right navigation callback
  */
-function handleKeyboard(event, onNavigateLeft, onNavigateRight) {
+function handleKeyboard(event, onNavigateLeft, onNavigateRight, onToggleMusic) {
     // Prevent default for arrow keys to avoid scrolling
     if (['ArrowLeft', 'ArrowRight', 'a', 'd', 'A', 'D'].includes(event.key)) {
         event.preventDefault();
@@ -105,6 +105,10 @@ function handleKeyboard(event, onNavigateLeft, onNavigateRight) {
         case 'd':
         case 'D':
             if (onNavigateRight) onNavigateRight();
+            break;
+        case 'm':
+        case 'M':
+            if (onToggleMusic) onToggleMusic();
             break;
     }
 }

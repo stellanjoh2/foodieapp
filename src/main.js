@@ -14,7 +14,9 @@ import { getFoodDetailsByName } from './data/foodDetails.js';
 // Application state
 const state = {
     initialized: false,
-    lastFrameTime: performance.now()
+    lastFrameTime: performance.now(),
+    audio: null,
+    isMusicPlaying: false
 };
 
 /**
@@ -51,7 +53,8 @@ async function init() {
             handleNavigateLeft,   // onNavigateLeft
             handleNavigateRight,  // onNavigateRight
             null,                 // onRotate (optional)
-            null                  // onSelect (optional)
+            null,                 // onSelect (optional)
+            toggleMusic           // onToggleMusic
         );
 
         // Initialize post-processing with soft bloom
@@ -69,6 +72,7 @@ async function init() {
         
         state.initialized = true;
         state.lastFrameTime = performance.now();
+        state.audio = createBackgroundAudio();
         
         console.log('Application initialized successfully');
         console.log('Use arrow keys or gamepad to navigate items');
@@ -138,6 +142,46 @@ function updateOverlayWithCurrent() {
     if (!selected) return;
     const details = getFoodDetailsByName(selected.name);
     updateOverlayContent(selected.name, details);
+}
+
+function createBackgroundAudio() {
+    if (typeof Audio === 'undefined') {
+        return null;
+    }
+
+    const audio = new Audio('Music/food-store.mp3');
+    audio.loop = true;
+    audio.preload = 'auto';
+    audio.crossOrigin = 'anonymous';
+    audio.volume = 0.45;
+    return audio;
+}
+
+function toggleMusic() {
+    if (!state.initialized) return;
+    if (!state.audio) {
+        state.audio = createBackgroundAudio();
+        if (!state.audio) return;
+    }
+
+    if (state.isMusicPlaying) {
+        state.audio.pause();
+        state.isMusicPlaying = false;
+        console.log('Music paused');
+    } else {
+        const playPromise = state.audio.play();
+        if (playPromise && typeof playPromise.then === 'function') {
+            playPromise.then(() => {
+                state.isMusicPlaying = true;
+                console.log('Music playing');
+            }).catch((error) => {
+                console.warn('Music playback prevented:', error);
+            });
+        } else {
+            state.isMusicPlaying = true;
+            console.log('Music playing');
+        }
+    }
 }
 
 // Start application when DOM is ready
