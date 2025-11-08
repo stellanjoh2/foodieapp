@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { initScene, startRenderLoop, getRenderer, getTopSpotlight } from './scene.js';
-import { initModelLoader, loadModel, getAvailableFoodItems } from './models.js';
+import { initModelLoader, loadModel } from './models.js';
 import { initControls } from './controls.js';
 import { initSelector, selectPrevious, selectNext, updateSelector, getSelectedItem, getSelectedIndex, getItemCount } from './selector.js';
 import { initPostProcessing, render as renderPostProcessing, setBloomEnabled, isBloomEnabled } from './postprocessing.js';
@@ -20,20 +20,19 @@ const state = {
     initialized: false,
     lastFrameTime: performance.now(),
     audio: null,
-    isMusicPlaying: false,
-    sfx: {
-        swipe: null,
-        loadingSwipe: null,
-        cancel: null,
-        loadingCancel: null,
-        ok: null,
-        loadingOk: null
-    }
+    isMusicPlaying: false
 };
 
 const spotlightTarget = new THREE.Vector3();
 const spotlightDesiredPosition = new THREE.Vector3();
 let musicToggleButton = null;
+const sfxCache = new Map();
+const sfxLoads = new Map();
+const SFX_CONFIG = {
+    swipe: { path: 'Sounds/coin-4.wav', volume: 0.6 },
+    cancel: { path: 'Sounds/cancel-1.wav', volume: 0.55 },
+    ok: { path: 'Sounds/ok-2.wav', volume: 0.65 }
+};
 
 const loadingUIState = {
     screen: null,
@@ -75,8 +74,6 @@ async function init() {
         // Load the GLB model
         // Path is relative to loader.setPath('3d-assets/')
         await loadModel('fast_food_stylized.glb', updateLoadingProgress);
-        
-        console.log('Available food items:', getAvailableFoodItems());
 
         setLoadingStatus('Plating the menu…');
 
@@ -104,7 +101,6 @@ async function init() {
         const renderer = getRenderer();
         const performanceTier = getPerformanceTier();
         const postProcessingConfig = getPostProcessingConfig(performanceTier);
-        console.log('Post-processing tier', performanceTier, postProcessingConfig);
         const composer = initPostProcessing(renderer, scene, camera, postProcessingConfig);
         updateLoadingProgress(0.98);
 
@@ -117,15 +113,12 @@ async function init() {
         state.initialized = true;
         state.lastFrameTime = performance.now();
         state.audio = createBackgroundAudio();
-        preloadSwipeSfx();
+        preloadSfx('swipe');
         updateMusicToggleButton();
         
         setLoadingStatus('Opening the shop…');
         updateLoadingProgress(1);
         completeLoadingUI();
-
-        console.log('Application initialized successfully');
-        console.log('Use arrow keys or gamepad to navigate items');
 
     } catch (error) {
         console.error('Failed to initialize application:', error);
@@ -137,47 +130,14 @@ async function init() {
  * Handle navigation left
  */
 function handleNavigateLeft() {
-    if (!state.initialized) return;
-
-    const currentIndex = getSelectedIndex();
-    if (currentIndex <= 0) {
-        playCancelSound();
-        return; // hard stop reached
-    }
-
-    animateOverlaySelectionChange();
-    selectPrevious();
-    updateOverlayWithCurrent();
-    playSwipeSound();
-
-    const selected = getSelectedItem();
-    if (selected) {
-        console.log('Selected:', selected.name);
-    }
+    handleNavigation(-1);
 }
 
 /**
  * Handle navigation right
  */
 function handleNavigateRight() {
-    if (!state.initialized) return;
-
-    const currentIndex = getSelectedIndex();
-    const itemCount = getItemCount();
-    if (currentIndex >= itemCount - 1) {
-        playCancelSound();
-        return; // hard stop reached
-    }
-
-    animateOverlaySelectionChange();
-    selectNext();
-    updateOverlayWithCurrent();
-    playSwipeSound();
-
-    const selected = getSelectedItem();
-    if (selected) {
-        console.log('Selected:', selected.name);
-    }
+    handleNavigation(1);
 }
 
 /**
@@ -234,140 +194,79 @@ function createBackgroundAudio() {
     return audio;
 }
 
-function preloadSwipeSfx() {
-    if (state.sfx.swipe || state.sfx.loadingSwipe) {
-        return state.sfx.loadingSwipe;
+function preloadSfx(key) {
+    if (sfxCache.has(key)) {
+        return Promise.resolve(sfxCache.get(key));
     }
-    const loadPromise = loadSfx('Sounds/coin-4.wav')
+    if (sfxLoads.has(key)) {
+        return sfxLoads.get(key);
+    }
+    const config = SFX_CONFIG[key];
+    if (!config) return Promise.resolve(null);
+    const promise = loadSfx(config.path)
         .then((asset) => {
-            state.sfx.swipe = asset;
+            sfxCache.set(key, asset);
             return asset;
         })
         .catch((error) => {
-            console.warn('Failed to load swipe SFX:', error);
+            console.warn(`Failed to load ${key} SFX:`, error);
             return null;
         })
         .finally(() => {
-            state.sfx.loadingSwipe = null;
+            sfxLoads.delete(key);
         });
-    state.sfx.loadingSwipe = loadPromise;
-    return loadPromise;
+    sfxLoads.set(key, promise);
+    return promise;
 }
 
-function preloadCancelSfx() {
-    if (state.sfx.cancel || state.sfx.loadingCancel) {
-        return state.sfx.loadingCancel;
+function playSfxKey(key, overrides = {}) {
+    if (!state.initialized) return;
+    const config = SFX_CONFIG[key];
+    if (!config) return;
+    const trigger = (asset) => {
+        if (asset) {
+            playSfx(asset, { ...config, ...overrides });
+        }
+    };
+    const cached = sfxCache.get(key);
+    if (cached) {
+        trigger(cached);
+        return;
     }
-    const loadPromise = loadSfx('Sounds/cancel-1.wav')
-        .then((asset) => {
-            state.sfx.cancel = asset;
-            return asset;
-        })
-        .catch((error) => {
-            console.warn('Failed to load cancel SFX:', error);
-            return null;
-        })
-        .finally(() => {
-            state.sfx.loadingCancel = null;
-        });
-    state.sfx.loadingCancel = loadPromise;
-    return loadPromise;
-}
-
-function preloadOkSfx() {
-    if (state.sfx.ok || state.sfx.loadingOk) {
-        return state.sfx.loadingOk;
-    }
-    const loadPromise = loadSfx('Sounds/ok-2.wav')
-        .then((asset) => {
-            state.sfx.ok = asset;
-            return asset;
-        })
-        .catch((error) => {
-            console.warn('Failed to load confirm SFX:', error);
-            return null;
-        })
-        .finally(() => {
-            state.sfx.loadingOk = null;
-        });
-    state.sfx.loadingOk = loadPromise;
-    return loadPromise;
+    preloadSfx(key).then(trigger);
 }
 
 function playSwipeSound() {
-    if (!state.initialized) return;
-
-    if (state.sfx.swipe) {
-        playSfx(state.sfx.swipe, { volume: 0.6 });
-        return;
-    }
-
-    preloadSwipeSfx().then((asset) => {
-        if (asset) {
-            playSfx(asset, { volume: 0.6 });
-        }
-    });
+    playSfxKey('swipe');
 }
 
 function playCancelSound() {
-    if (!state.initialized) return;
-
-    if (state.sfx.cancel) {
-        playSfx(state.sfx.cancel, { volume: 0.55 });
-        return;
-    }
-
-    preloadCancelSfx().then((asset) => {
-        if (asset) {
-            playSfx(asset, { volume: 0.55 });
-        }
-    });
+    playSfxKey('cancel');
 }
 
 function playOkSound(playbackRate = 1.0) {
-    if (!state.initialized) return;
-
-    if (state.sfx.ok) {
-        playSfx(state.sfx.ok, { volume: 0.65, playbackRate });
-        return;
-    }
-
-    preloadOkSfx().then((asset) => {
-        if (asset) {
-            playSfx(asset, { volume: 0.65, playbackRate });
-        }
-    });
+    playSfxKey('ok', { playbackRate });
 }
 
 function toggleMusic() {
-    if (!state.initialized) return;
-    if (!state.audio) {
-        state.audio = createBackgroundAudio();
-        if (!state.audio) return;
-    }
+    if (!state.initialized || !ensureAudio()) return;
 
     if (state.isMusicPlaying) {
         state.audio.pause();
-        state.isMusicPlaying = false;
-        console.log('Music paused');
-        updateMusicToggleButton();
-    } else {
-        const playPromise = state.audio.play();
-        if (playPromise && typeof playPromise.then === 'function') {
-            playPromise.then(() => {
-                state.isMusicPlaying = true;
-                console.log('Music playing');
-                updateMusicToggleButton();
-            }).catch((error) => {
+        updateMusicPlaying(false);
+        return;
+    }
+
+    const playPromise = state.audio.play();
+    if (playPromise && typeof playPromise.then === 'function') {
+        playPromise
+            .then(() => updateMusicPlaying(true))
+            .catch((error) => {
                 console.warn('Music playback prevented:', error);
-                state.isMusicPlaying = false;
-                updateMusicToggleButton();
+                updateMusicPlaying(false);
             });
-        } else {
-            state.isMusicPlaying = true;
-            console.log('Music playing');
-            updateMusicToggleButton();
-        }
+    } else {
+        updateMusicPlaying(true);
     }
 }
 
@@ -375,7 +274,6 @@ function toggleBloom() {
     const currentlyEnabled = isBloomEnabled();
     const nextState = !currentlyEnabled;
     setBloomEnabled(nextState);
-    console.log(`Bloom ${nextState ? 'enabled' : 'disabled'}`);
 }
 
 function handleQuantityChangeSound(event) {
@@ -416,31 +314,56 @@ function updateMusicToggleButton() {
     musicToggleButton.classList.toggle('is-active', active);
 }
 
+function handleNavigation(step) {
+    if (!state.initialized) return;
+    const index = getSelectedIndex();
+    const atBoundary = step < 0 ? index <= 0 : index >= getItemCount() - 1;
+    if (atBoundary) {
+        playCancelSound();
+        return;
+    }
+    animateOverlaySelectionChange();
+    (step < 0 ? selectPrevious : selectNext)();
+    updateOverlayWithCurrent();
+    playSwipeSound();
+}
+
+function ensureAudio() {
+    if (state.audio) return true;
+    state.audio = createBackgroundAudio();
+    return Boolean(state.audio);
+}
+
+function updateMusicPlaying(playing) {
+    state.isMusicPlaying = playing;
+    updateMusicToggleButton();
+}
+
 function getPostProcessingConfig(tier) {
     switch (tier) {
         case 'low':
             return {
                 enabled: true,
-                renderScale: 0.25,
-                bloomStrength: 0.6,
-                bloomRadius: 2.1,
-                bloomThreshold: 0.982
+                renderScale: 0.6,
+                bloomStrength: 0.3,
+                bloomRadius: 1.0,
+                bloomThreshold: 0.95
             };
         case 'medium':
             return {
                 enabled: true,
-                renderScale: 0.35,
-                bloomStrength: 1.0,
-                bloomRadius: 3.5,
-                bloomThreshold: 0.984
+                renderScale: 0.75,
+                bloomStrength: 0.47,
+                bloomRadius: 1.5,
+                bloomThreshold: 0.955
             };
         default:
             return {
                 enabled: true,
-                renderScale: 0.5,
-                bloomStrength: 1.4,
-                bloomRadius: 5.0,
-                bloomThreshold: 0.986
+                renderScale: 0.9,
+                bloomStrength: 0.64,
+                bloomRadius: 2.0,
+                bloomThreshold: 0.96
             };
     }
 }

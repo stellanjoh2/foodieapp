@@ -176,51 +176,40 @@ function changeQuantity(action) {
     if (!currentItemKey || !overlayContent) return false;
     if (action !== 'increment' && action !== 'decrement') return false;
 
-    let quantity = getQuantity(currentItemKey);
-    const previousQuantity = quantity;
-    if (action === 'increment') {
-        quantity = Math.min(MAX_QUANTITY, quantity + 1);
-    } else {
-        quantity = Math.max(MIN_QUANTITY, quantity - 1);
-    }
+    const previousQuantity = getQuantity(currentItemKey);
+    const nextQuantity = action === 'increment'
+        ? Math.min(MAX_QUANTITY, previousQuantity + 1)
+        : Math.max(MIN_QUANTITY, previousQuantity - 1);
 
-    if (quantity === previousQuantity) {
-        const detail = {
-            action,
-            itemKey: currentItemKey,
-            quantity,
-            blocked: true
-        };
-        const changeEvent = new CustomEvent('overlay:quantity-change', {
-            detail,
-            bubbles: true
-        });
-        overlayContent.dispatchEvent(changeEvent);
+    if (nextQuantity === previousQuantity) {
+        emitQuantityChange(action, previousQuantity, true);
         return false;
     }
 
-    quantityState.set(currentItemKey, quantity);
-    const valueEl = overlayContent?.querySelector('[data-quantity-value]');
+    quantityState.set(currentItemKey, nextQuantity);
+    const valueEl = overlayContent.querySelector('[data-quantity-value]');
     if (valueEl) {
-        valueEl.textContent = `${quantity}`;
+        valueEl.textContent = `${nextQuantity}`;
     }
 
-    const detail = {
-        action,
-        itemKey: currentItemKey,
-        quantity,
-        blocked: false
-    };
-    const changeEvent = new CustomEvent('overlay:quantity-change', {
-        detail,
-        bubbles: true
-    });
-    overlayContent.dispatchEvent(changeEvent);
+    emitQuantityChange(action, nextQuantity, false);
     return true;
 }
 
 export function adjustQuantity(action) {
     return changeQuantity(action);
+}
+
+function emitQuantityChange(action, quantity, blocked) {
+    overlayContent.dispatchEvent(new CustomEvent('overlay:quantity-change', {
+        detail: {
+            action,
+            itemKey: currentItemKey,
+            quantity,
+            blocked
+        },
+        bubbles: true
+    }));
 }
 
 function getQuantity(itemKey) {
