@@ -1,7 +1,9 @@
+import { playTypeSound } from '../audio.js';
+
 const INITIAL_DELAY_MS = 4000;
 const APPEAR_INTERVAL_MS = 10000;
 const TYPE_DELAY_MS = 650;
-const TYPE_SPEED_MS = 28;
+const TYPE_SPEED_MS = 14;
 const HOLD_AFTER_TYPE_MS = 3500;
 
 const APPEARANCES = [
@@ -111,7 +113,14 @@ function showSpeech(line) {
             scheduleExit();
             return;
         }
-        textEl.textContent += characters[index++];
+        const nextChar = characters[index++];
+        textEl.textContent += nextChar;
+        if (nextChar.trim()) {
+            playTypeSound({
+                frequency: 1100 + Math.random() * 500,
+                volume: 0.14
+            });
+        }
     }, TYPE_SPEED_MS);
 }
 

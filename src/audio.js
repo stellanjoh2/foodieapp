@@ -86,3 +86,38 @@ export function disposeAudio() {
     }
 }
 
+export function playTypeSound({
+    frequency = 1000,
+    duration = 0.06,
+    volume = 0.08
+} = {}) {
+    const context = getAudioContext();
+    if (!context) return;
+
+    if (context.state === 'suspended') {
+        context.resume().catch(() => { /* ignore */ });
+    }
+
+    const osc = context.createOscillator();
+    const gain = context.createGain();
+    const filter = context.createBiquadFilter();
+
+    osc.type = 'triangle';
+    osc.frequency.value = frequency;
+
+    gain.gain.value = volume;
+    filter.type = 'lowpass';
+    filter.frequency.value = frequency * 1.5;
+
+    const now = context.currentTime;
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.linearRampToValueAtTime(0, now + duration);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(context.destination);
+
+    osc.start(now);
+    osc.stop(now + duration);
+}
+
