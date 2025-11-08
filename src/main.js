@@ -267,7 +267,7 @@ function getPostProcessingConfig(tier) {
                 renderScale: 0.35,
                 bloomStrength: 0.42,
                 bloomRadius: 0.72,
-                bloomThreshold: 0.85
+                bloomThreshold: 0.6375
             };
         default:
             return {
@@ -275,7 +275,7 @@ function getPostProcessingConfig(tier) {
                 renderScale: 0.5,
                 bloomStrength: 0.54,
                 bloomRadius: 1.08,
-                bloomThreshold: 0.8
+                bloomThreshold: 0.6
             };
     }
 }
