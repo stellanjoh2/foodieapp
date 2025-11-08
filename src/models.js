@@ -45,17 +45,7 @@ export async function loadModel(path, onProgress) {
             path,
             async (gltf) => {
                 loadedModel = gltf.scene;
-                
-                // Debug: Check if textures are on original meshes
-                console.log('=== Checking textures on loaded meshes ===');
-                gltf.scene.traverse((child) => {
-                    if (child.isMesh && child.material) {
-                        const mat = child.material;
-                        const hasMap = mat.map ? 'YES' : 'NO';
-                        console.log(`${child.name}: map=${hasMap}`);
-                    }
-                });
-                
+                                
                 // If textures are missing, load them from textures folder
                 // Wait for all textures to load before extracting/cloning meshes
                 await loadExternalTextures(gltf.scene);
@@ -96,152 +86,122 @@ export async function loadModel(path, onProgress) {
  * @param {THREE.Group} scene - The loaded scene
  */
 async function loadExternalTextures(scene) {
-    console.log('=== Loading external textures ===');
     const textureLoader = new THREE.TextureLoader();
     textureLoader.setPath('3d-assets/textures/');
-    
-    const textureMap = {
-        'chicken_legs': 'chicken_legs',
-        'coffee': 'coffee',
-        'pizza': 'pizza',
-        'ice_cream': 'ice_cream',
-        'taco': 'taco',
-        'donut': 'donut',
-        'french_fries': 'french_fries',
-        'hot_dog': 'hot_dog',
-        'burger': 'burger'
+
+    const textureAliases = {
+        chicken_legs: 'chicken_legs',
+        coffee: 'coffee',
+        pizza: 'pizza',
+        ice_cream: 'ice_cream',
+        taco: 'taco',
+        donut: 'donut',
+        french_fries: 'french_fries',
+        hot_dog: 'hot_dog',
+        burger: 'burger'
     };
-    
-    // Collect all texture loading promises
-    const texturePromises = [];
-    
-    scene.traverse((child) => {
-        if (child.isMesh && child.material) {
-            const meshName = child.name.toLowerCase();
-            const texturePrefix = textureMap[meshName];
-            
-            if (texturePrefix) {
-                // Ensure material is MeshStandardMaterial for PBR
-                if (!(child.material instanceof THREE.MeshStandardMaterial)) {
-                    child.material = new THREE.MeshStandardMaterial({
-                        color: 0xffffff
-                    });
-                }
-                
-                console.log(`Loading textures for: ${child.name} (prefix: ${texturePrefix})`);
-                
-                // Load base color (wait for it to complete)
-                const baseColorPromise = new Promise((resolve, reject) => {
-                    textureLoader.load(
-                        `${texturePrefix}_BaseColor.png`,
-                        (texture) => {
-                            texture.flipY = false;
-                            texture.colorSpace = THREE.SRGBColorSpace;
-                            child.material.map = texture;
-                            child.material.needsUpdate = true;
-                            console.log(`✓ Loaded base color for ${child.name}`);
-                            resolve();
-                        },
-                        undefined,
-                        (error) => {
-                            console.error(`Failed to load base color for ${child.name}:`, error);
-                            reject(error);
-                        }
-                    );
-                });
-                texturePromises.push(baseColorPromise);
-                
-                // Load normal map
-                const normalPromise = new Promise((resolve, reject) => {
-                    textureLoader.load(
-                        `${texturePrefix}_Normal.png`,
-                        (texture) => {
-                            texture.flipY = false;
-                            child.material.normalMap = texture;
-                            child.material.needsUpdate = true;
-                            resolve();
-                        },
-                        undefined,
-                        (error) => {
-                            console.error(`Failed to load normal map for ${child.name}:`, error);
-                            reject(error);
-                        }
-                    );
-                });
-                texturePromises.push(normalPromise);
-                
-                // Load roughness map
-                const roughnessPromise = new Promise((resolve, reject) => {
-                    textureLoader.load(
-                        `${texturePrefix}_Roughness.png`,
-                        (texture) => {
-                            texture.flipY = false;
-                            child.material.roughnessMap = texture;
-                            child.material.roughness = 1.0;
-                            child.material.needsUpdate = true;
-                            resolve();
-                        },
-                        undefined,
-                        (error) => {
-                            console.error(`Failed to load roughness map for ${child.name}:`, error);
-                            reject(error);
-                        }
-                    );
-                });
-                texturePromises.push(roughnessPromise);
-                
-                // Load metalness map
-                const metalnessPromise = new Promise((resolve, reject) => {
-                    textureLoader.load(
-                        `${texturePrefix}_Metalness.png`,
-                        (texture) => {
-                            texture.flipY = false;
-                            child.material.metalnessMap = texture;
-                            child.material.metalness = 1.0;
-                            child.material.needsUpdate = true;
-                            resolve();
-                        },
-                        undefined,
-                        (error) => {
-                            console.error(`Failed to load metalness map for ${child.name}:`, error);
-                            reject(error);
-                        }
-                    );
-                });
-                texturePromises.push(metalnessPromise);
-                
-                // Load transmission for coffee
-                if (meshName === 'coffee') {
-                    const transmissionPromise = new Promise((resolve, reject) => {
-                        textureLoader.load(
-                            `${texturePrefix}_Transmission.png`,
-                            (texture) => {
-                                texture.flipY = false;
-                                child.material.transmission = 1.0;
-                                if (child.material.transmissionMap !== undefined) {
-                                    child.material.transmissionMap = texture;
-                                }
-                                child.material.needsUpdate = true;
-                                resolve();
-                            },
-                            undefined,
-                            (error) => {
-                                console.error(`Failed to load transmission map for ${child.name}:`, error);
-                                reject(error);
-                            }
-                        );
-                    });
-                    texturePromises.push(transmissionPromise);
-                }
-            } else {
-                console.log(`No texture mapping found for mesh: ${child.name}`);
+
+    const baseTextures = [
+        {
+            suffix: 'BaseColor.png',
+            label: 'base color',
+            apply: (texture, material) => {
+                texture.colorSpace = THREE.SRGBColorSpace;
+                material.map = texture;
+            }
+        },
+        {
+            suffix: 'Normal.png',
+            label: 'normal map',
+            apply: (texture, material) => {
+                material.normalMap = texture;
+            }
+        },
+        {
+            suffix: 'Roughness.png',
+            label: 'roughness map',
+            apply: (texture, material) => {
+                material.roughnessMap = texture;
+                material.roughness = 1.0;
+            }
+        },
+        {
+            suffix: 'Metalness.png',
+            label: 'metalness map',
+            apply: (texture, material) => {
+                material.metalnessMap = texture;
+                material.metalness = 1.0;
             }
         }
+    ];
+
+    const optionalTextures = [
+        {
+            suffix: 'Transmission.png',
+            label: 'transmission map',
+            filter: (alias) => alias === 'coffee',
+            apply: (texture, material) => {
+                material.transmission = 1.0;
+                if (material.transmissionMap !== undefined) {
+                    material.transmissionMap = texture;
+                }
+            }
+        }
+    ];
+
+    const loadTasks = [];
+    scene.traverse((child) => {
+        if (!child.isMesh || !child.material) return;
+        const alias = textureAliases[child.name.toLowerCase()];
+        if (!alias) return;
+
+        if (!(child.material instanceof THREE.MeshStandardMaterial)) {
+            child.material = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        }
+
+        baseTextures.forEach(({ suffix, apply, label }) => {
+            loadTasks.push(loadTextureAsset(
+                textureLoader,
+                `${alias}_${suffix}`,
+                child.material,
+                apply,
+                `${label} for ${child.name}`
+            ));
+        });
+
+        optionalTextures.forEach(({ filter, suffix, apply, label }) => {
+            if (filter(alias)) {
+                loadTasks.push(loadTextureAsset(
+                    textureLoader,
+                    `${alias}_${suffix}`,
+                    child.material,
+                    apply,
+                    `${label} for ${child.name}`
+                ));
+            }
+        });
     });
-    
-    // Wait for all textures to load
-    await Promise.all(texturePromises);
-    console.log('=== Finished loading external textures ===');
+
+    await Promise.all(loadTasks);
+}
+
+function loadTextureAsset(loader, file, material, applyTexture, label) {
+    return new Promise((resolve, reject) => {
+        loader.load(
+            file,
+            (texture) => {
+                texture.flipY = false;
+                applyTexture(texture, material);
+                material.needsUpdate = true;
+                resolve();
+            },
+            undefined,
+            (error) => {
+                console.error(`Failed to load ${label}:`, error);
+                reject(error);
+            }
+        );
+    });
 }
 
 /**
@@ -250,79 +210,36 @@ async function loadExternalTextures(scene) {
  * @param {THREE.Group} model - The loaded model group
  */
 function extractFoodItems(model) {
-    // First, log all meshes found in the GLB for inspection
-    console.log('=== GLB File Analysis ===');
-    const allMeshes = [];
-    
     model.traverse((child) => {
-        if (child.isMesh) {
-            allMeshes.push({
-                name: child.name,
-                nameLower: child.name.toLowerCase(),
-                type: child.type,
-                geometry: child.geometry ? child.geometry.type : 'none',
-                material: child.material ? child.material.type : 'none'
-            });
+        if (!child.isMesh) return;
+        const key = resolveFoodKey(child.name);
+        if (!key) return;
+        child.castShadow = true;
+        child.receiveShadow = true;
+        foodItems[key] = { mesh: child };
+    });
+}
+
+const FOOD_MATCHERS = [
+    { key: 'burger', patterns: ['burger'] },
+    { key: 'chicken', patterns: ['chicken', 'legs'] },
+    { key: 'coffee', patterns: ['coffee'] },
+    { key: 'donut', patterns: ['donut'] },
+    { key: 'fries', patterns: ['fries', 'french'] },
+    { key: 'hotdog', patterns: ['hotdog', 'hot_dog'] },
+    { key: 'icecream', patterns: ['ice', 'cream'] },
+    { key: 'pizza', patterns: ['pizza'] },
+    { key: 'taco', patterns: ['taco'] }
+];
+
+function resolveFoodKey(name) {
+    const lower = name.toLowerCase();
+    for (const { key, patterns } of FOOD_MATCHERS) {
+        if (patterns.some((fragment) => lower.includes(fragment))) {
+            return key;
         }
-    });
-    
-    console.log(`Found ${allMeshes.length} meshes in GLB:`);
-    allMeshes.forEach((mesh, index) => {
-        console.log(`  ${index + 1}. Name: "${mesh.name}" (lowercase: "${mesh.nameLower}")`);
-    });
-    console.log('========================');
-    
-    // Now extract food items based on mesh names
-    // We'll try multiple naming patterns to match the actual GLB structure
-    model.traverse((child) => {
-        if (child.isMesh) {
-            const name = child.name.toLowerCase();
-            
-            // Try to match food items by name patterns
-            // Based on texture names: burger, chicken_legs, coffee, donut, french_fries, hot_dog, ice_cream, pizza, taco
-            let foodItemKey = null;
-            
-            if (name.includes('burger')) {
-                foodItemKey = 'burger';
-            } else if (name.includes('chicken') || name.includes('legs')) {
-                foodItemKey = 'chicken';
-            } else if (name.includes('coffee')) {
-                foodItemKey = 'coffee';
-            } else if (name.includes('donut')) {
-                foodItemKey = 'donut';
-            } else if (name.includes('fries') || name.includes('french')) {
-                foodItemKey = 'fries';
-            } else if (name.includes('hotdog') || name.includes('hot_dog')) {
-                foodItemKey = 'hotdog';
-            } else if (name.includes('ice') || name.includes('cream')) {
-                foodItemKey = 'icecream';
-            } else if (name.includes('pizza')) {
-                foodItemKey = 'pizza';
-            } else if (name.includes('taco')) {
-                foodItemKey = 'taco';
-            }
-            
-            // If we found a match, clone and store the mesh
-            if (foodItemKey) {
-                // Store the original mesh reference for cloning later
-                // We'll clone on demand to preserve textures properly
-                child.castShadow = true;
-                child.receiveShadow = true;
-                foodItems[foodItemKey] = {
-                    mesh: child  // Original mesh from GLB
-                };
-                
-                console.log(`✓ Extracted: "${child.name}" → ${foodItemKey}`);
-            } else {
-                // Log unmatched meshes so we can identify them
-                console.log(`⚠ Unmatched mesh: "${child.name}"`);
-            }
-        }
-    });
-    
-    console.log('\n=== Extracted Food Items ===');
-    console.log('Available items:', Object.keys(foodItems));
-    console.log('===========================\n');
+    }
+    return null;
 }
 
 /**

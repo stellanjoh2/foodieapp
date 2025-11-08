@@ -128,24 +128,23 @@ export function initPostProcessing(renderer, scene, camera, options = {}) {
     // Reduced strength and higher threshold to keep exposure similar but highlight speculars
     // Performance optimization: Render bloom at 0.5x resolution for better performance
     // (barely noticeable but significant performance gain)
-    const bloomResolution = new THREE.Vector2(
-        renderer.domElement.width * bloomSettings.renderScale,
-        renderer.domElement.height * bloomSettings.renderScale
+    const baseWidth = renderer.domElement.width;
+    const baseHeight = renderer.domElement.height;
+    const resolution = new THREE.Vector2(
+        baseWidth * bloomSettings.renderScale,
+        baseHeight * bloomSettings.renderScale
     );
     bloomPass = new UnrealBloomPass(
-        bloomResolution,  // Lower resolution for performance
+        resolution,
         config.bloomStrength,
         config.bloomRadius,
         config.bloomThreshold
     );
+    bloomPass.threshold = config.bloomThreshold;
+    bloomPass.strength = config.bloomStrength;
+    bloomPass.radius = config.bloomRadius;
     bloomPass.enabled = bloomEnabled;
     composer.addPass(bloomPass);
-    console.log('Bloom pass initialized', {
-        strength: config.bloomStrength,
-        radius: config.bloomRadius,
-        threshold: config.bloomThreshold,
-        renderScale: bloomSettings.renderScale
-    });
     
     // Vignette disabled - bloom only
     
