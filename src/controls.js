@@ -5,6 +5,8 @@
 
 import * as THREE from 'three';
 
+const SWIPE_COOLDOWN_MS = 180;
+
 let controls = {
     mouse: { x: 0, y: 0 },
     isDragging: false,
@@ -14,6 +16,7 @@ let controls = {
     mouseStartTime: 0,
     isMouseSwipe: false,
     mouseSwipeTriggered: false,
+    lastSwipeTime: 0,
     gamepadIndex: null,
     gamepadConnected: false,
     touchStartX: 0,
@@ -242,12 +245,16 @@ function onMouseUp(event) {
     const minSwipeSpeed = 0.25;
 
     if (controls.isMouseSwipe && absDeltaX > absDeltaY && absDeltaX > minSwipeDistance && swipeSpeed > minSwipeSpeed) {
-        if (deltaX < 0 && controls.onNavigateRight) {
-            controls.onNavigateRight();
-            controls.mouseSwipeTriggered = true;
-        } else if (deltaX > 0 && controls.onNavigateLeft) {
-            controls.onNavigateLeft();
-            controls.mouseSwipeTriggered = true;
+        const now = Date.now();
+        if (now - controls.lastSwipeTime >= SWIPE_COOLDOWN_MS) {
+            controls.lastSwipeTime = now;
+            if (deltaX < 0 && controls.onNavigateRight) {
+                controls.onNavigateRight();
+                controls.mouseSwipeTriggered = true;
+            } else if (deltaX > 0 && controls.onNavigateLeft) {
+                controls.onNavigateLeft();
+                controls.mouseSwipeTriggered = true;
+            }
         }
     }
 
@@ -340,12 +347,16 @@ function onTouchEnd(event) {
         
         // Only trigger if horizontal swipe is dominant and meets thresholds
         if (absDeltaX > absDeltaY && absDeltaX > minSwipeDistance && swipeSpeed > minSwipeSpeed) {
-            if (deltaX < 0 && controls.onNavigateRight) {
-                // Swipe left = navigate right (show next item)
-                controls.onNavigateRight();
-            } else if (deltaX > 0 && controls.onNavigateLeft) {
-                // Swipe right = navigate left (show previous item)
-                controls.onNavigateLeft();
+            const now = Date.now();
+            if (now - controls.lastSwipeTime >= SWIPE_COOLDOWN_MS) {
+                controls.lastSwipeTime = now;
+                if (deltaX < 0 && controls.onNavigateRight) {
+                    // Swipe left = navigate right (show next item)
+                    controls.onNavigateRight();
+                } else if (deltaX > 0 && controls.onNavigateLeft) {
+                    // Swipe right = navigate left (show previous item)
+                    controls.onNavigateLeft();
+                }
             }
         }
     }

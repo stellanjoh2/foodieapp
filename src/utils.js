@@ -11,6 +11,25 @@ export function getDevicePixelRatio() {
 }
 
 /**
+ * Basic performance tier heuristic using available hardware hints.
+ * Returns 'low', 'medium', or 'high'.
+ * @returns {('low'|'medium'|'high')}
+ */
+export function getPerformanceTier() {
+    const cores = navigator.hardwareConcurrency || 4;
+    const memory = navigator.deviceMemory || 4;
+    const mobile = isMobile();
+
+    if (cores <= 2 || memory <= 2) {
+        return 'low';
+    }
+    if (cores <= 4 || memory <= 4 || mobile) {
+        return 'medium';
+    }
+    return 'high';
+}
+
+/**
  * Detect if device is mobile/tablet
  * @returns {boolean} True if mobile device
  */

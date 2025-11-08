@@ -78,3 +78,8 @@ On load, the application will:
 - Test each feature incrementally
 - Check browser console for GLB mesh analysis on load
 
+## Production Tips
+- **Compression & caching**: when deploying behind a static host or CDN, enable Brotli/Gzip and send long-lived cache headers for `/3d-assets`, `/Images`, `/Music`, and `/Sounds`.
+- **Bundling**: if the JS bundle grows, consider introducing a build step (Vite/Rollup) so Three.js and app modules can be code-split and tree-shaken before deployment.
+- **Asset pipelines**: precompress textures and audio beyond dev defaults; ship `.basis`/`.ktx2` textures and `.ogg` audio where supported for lighter downloads.
+

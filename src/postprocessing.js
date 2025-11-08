@@ -11,6 +11,10 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 
 let composer = null;
 let bloomPass = null;
+let bloomSettings = {
+    enabled: true,
+    renderScale: 0.5
+};
 
 /**
  * Vignette shader based on three-vignette-background style
@@ -84,7 +88,26 @@ const VignetteShader = {
  * @param {THREE.Camera} camera - Three.js camera
  * @returns {EffectComposer} Post-processing composer
  */
-export function initPostProcessing(renderer, scene, camera) {
+export function initPostProcessing(renderer, scene, camera, options = {}) {
+    const config = {
+        enabled: true,
+        renderScale: 0.5,
+        bloomStrength: 0.45,
+        bloomRadius: 0.9,
+        bloomThreshold: 0.8,
+        ...options
+    };
+    bloomSettings = {
+        enabled: config.enabled,
+        renderScale: THREE.MathUtils.clamp(config.renderScale, 0.25, 1)
+    };
+
+    if (!config.enabled) {
+        composer = null;
+        bloomPass = null;
+        return null;
+    }
+
     // Create effect composer
     composer = new EffectComposer(renderer);
     
@@ -97,14 +120,14 @@ export function initPostProcessing(renderer, scene, camera) {
     // Performance optimization: Render bloom at 0.5x resolution for better performance
     // (barely noticeable but significant performance gain)
     const bloomResolution = new THREE.Vector2(
-        renderer.domElement.width * 0.5,   // Half resolution for performance
-        renderer.domElement.height * 0.5
+        renderer.domElement.width * bloomSettings.renderScale,
+        renderer.domElement.height * bloomSettings.renderScale
     );
     bloomPass = new UnrealBloomPass(
         bloomResolution,  // Lower resolution for performance
-        0.45,  // Strength - 50% more intense (0.3 * 1.5 = 0.45)
-        0.9,   // Radius - 50% larger bloom radius (0.6 * 1.5 = 0.9)
-        0.8    // Threshold - higher threshold to only bloom very bright specular highlights (0.0 to 1.0)
+        config.bloomStrength,
+        config.bloomRadius,
+        config.bloomThreshold
     );
     composer.addPass(bloomPass);
     
@@ -124,7 +147,7 @@ export function updatePostProcessing(width, height) {
         
         // Update bloom pass resolution (maintain half resolution for performance)
         if (bloomPass) {
-            bloomPass.setSize(width * 0.5, height * 0.5);
+            bloomPass.setSize(width * bloomSettings.renderScale, height * bloomSettings.renderScale);
         }
     }
 }

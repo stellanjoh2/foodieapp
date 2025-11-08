@@ -14,8 +14,18 @@ let itemSpacing = 1.90; // Distance between items horizontally (25% more spacing
 let itemScale = 1;
 let floatingTime = 0; // Time accumulator for floating animation
 
-// Define the order: ice cream first, burger last
-const itemOrder = ['icecream', 'taco', 'donut', 'fries', 'hotdog', 'burger', 'chicken', 'coffee', 'pizza'];
+// Define display order: hearty meals first, desserts last
+const itemOrder = [
+    'burger',
+    'pizza',
+    'chicken',
+    'hotdog',
+    'taco',
+    'fries',
+    'coffee',
+    'donut',
+    'icecream'
+];
 
 /**
  * Per-asset scale and position adjustments

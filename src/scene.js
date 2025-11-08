@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { getDevicePixelRatio, setupVisibilityHandling } from './utils.js';
+import { getDevicePixelRatio, setupVisibilityHandling, getPerformanceTier } from './utils.js';
 import { updatePostProcessing } from './postprocessing.js';
 
 let scene, camera, renderer;
@@ -27,14 +27,16 @@ export function initScene(container) {
     camera.position.set(0, 0, 5);
 
     // Renderer
-    const pixelRatio = getDevicePixelRatio();
+    const performanceTier = getPerformanceTier();
+    const pixelRatioCap = performanceTier === 'low' ? 1.0 : performanceTier === 'medium' ? 1.2 : 1.5;
+    const pixelRatio = Math.min(getDevicePixelRatio(), pixelRatioCap);
     renderer = new THREE.WebGLRenderer({ 
         antialias: true,
-        powerPreference: 'high-performance'
+        powerPreference: performanceTier === 'low' ? 'low-power' : 'high-performance'
     });
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(pixelRatio);
-    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.enabled = performanceTier !== 'low';
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     
     // Ensure canvas sits behind UI overlays
@@ -103,13 +105,13 @@ function setupLighting() {
     // Ambient light - desaturated warm tint (75% less saturation)
     // Mix warm color with white for subtle warmth
     // Brightened by 20%: 0.6 * 1.2 = 0.72
-    const ambientLight = new THREE.AmbientLight(0xfefaf0, 0.72); // Very desaturated warm white
+    const ambientLight = new THREE.AmbientLight(0xfefaf0, 0.8712); // Very desaturated warm white (+20%)
     scene.add(ambientLight);
 
     // Main directional light - desaturated warm tone (75% less saturation)
     // Positioned from above/behind to simulate sunset lighting
     // Brightened by 20%: 1.0 * 1.2 = 1.2
-           const directionalLight = new THREE.DirectionalLight(0xfef5f0, 1.44); // +20% intensity (from 1.2)
+    const directionalLight = new THREE.DirectionalLight(0xfef5f0, 1.7424); // +20% intensity (from 1.44)
     directionalLight.position.set(3, 8, 5); // From above and behind (sunset angle)
     directionalLight.castShadow = true;
     directionalLight.shadow.mapSize.width = 2048;
@@ -124,13 +126,13 @@ function setupLighting() {
 
     // Fill light - desaturated warm tone from the front
     // Brightened by 20%: 0.4 * 1.2 = 0.48
-    const fillLight = new THREE.DirectionalLight(0xfef8f0, 0.48); // Very desaturated warm
+    const fillLight = new THREE.DirectionalLight(0xfef8f0, 0.5808); // Very desaturated warm (+20%)
     fillLight.position.set(-3, 2, 3); // From front-left
     scene.add(fillLight);
     
     // Rim light - desaturated warm tone from behind
     // Brightened by 20%: 0.3 * 1.2 = 0.36
-    const rimLight = new THREE.DirectionalLight(0xfef5f0, 0.36); // Desaturated warm
+    const rimLight = new THREE.DirectionalLight(0xfef5f0, 0.4356); // Desaturated warm (+20%)
     rimLight.position.set(-2, 4, -5); // From behind
     scene.add(rimLight);
     
@@ -139,13 +141,13 @@ function setupLighting() {
     // Using strong saturated colors from VelvetSun gradient
     // Left side point light - strong dark red from top of gradient
     // Brightened by 20%: 2.5 * 1.2 = 3.0
-    const leftPointLight = new THREE.PointLight(0xe73827, 3.0, 50); // Dark red/velvet (#e73827)
+    const leftPointLight = new THREE.PointLight(0xe73827, 3.63, 50); // Dark red/velvet (#e73827)
     leftPointLight.position.set(-4, 0, 0); // Left side, closer to food items, same level
     scene.add(leftPointLight);
     
     // Right side point light - strong orange-yellow from bottom of gradient
     // Brightened by 20%: 2.5 * 1.2 = 3.0
-    const rightPointLight = new THREE.PointLight(0xf8aa3b, 3.0, 50); // Bright orange-yellow (#f8aa3b)
+    const rightPointLight = new THREE.PointLight(0xf8aa3b, 3.63, 50); // Bright orange-yellow (#f8aa3b)
     rightPointLight.position.set(4, 0, 0); // Right side, closer to food items, same level
     scene.add(rightPointLight);
 }

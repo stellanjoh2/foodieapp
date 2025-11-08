@@ -39,7 +39,7 @@ export function initModelLoader() {
  * @param {string} path - Path to GLB file
  * @returns {Promise<THREE.Group>} Loaded model group
  */
-export async function loadModel(path) {
+export async function loadModel(path, onProgress) {
     return new Promise((resolve, reject) => {
         loader.load(
             path,
@@ -63,12 +63,24 @@ export async function loadModel(path) {
                 // Extract individual food items from the model (after textures are loaded)
                 extractFoodItems(gltf.scene);
                 
+                if (typeof onProgress === 'function') {
+                    try {
+                        onProgress(1);
+                    } catch (error) {
+                        console.warn('Progress callback failed during completion', error);
+                    }
+                }
+
                 resolve(gltf.scene);
             },
             (progress) => {
-                // Progress callback (can be used for loading indicator)
-                const percent = (progress.loaded / progress.total) * 100;
-                console.log(`Loading: ${percent.toFixed(1)}%`);
+                if (typeof onProgress === 'function' && progress.total) {
+                    try {
+                        onProgress(progress.loaded / progress.total);
+                    } catch (error) {
+                        console.warn('Progress callback failed', error);
+                    }
+                }
             },
             (error) => {
                 console.error('Error loading model:', error);
