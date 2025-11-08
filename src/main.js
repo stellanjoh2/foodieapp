@@ -265,17 +265,17 @@ function getPostProcessingConfig(tier) {
             return {
                 enabled: true,
                 renderScale: 0.35,
-                bloomStrength: 1.05,
-                bloomRadius: 1.8,
-                bloomThreshold: 0.85
+                bloomStrength: 0.35,
+                bloomRadius: 0.6,
+                bloomThreshold: 0.8375
             };
         default:
             return {
                 enabled: true,
                 renderScale: 0.5,
-                bloomStrength: 1.35,
-                bloomRadius: 2.7,
-                bloomThreshold: 0.8
+                bloomStrength: 0.45,
+                bloomRadius: 0.9,
+                bloomThreshold: 0.6
             };
     }
 }

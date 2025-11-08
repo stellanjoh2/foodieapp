@@ -92,8 +92,8 @@ export function initPostProcessing(renderer, scene, camera, options = {}) {
     const config = {
         enabled: true,
         renderScale: 0.5,
-        bloomStrength: 1.35,
-        bloomRadius: 2.7,
+        bloomStrength: 0.45,
+        bloomRadius: 0.9,
         bloomThreshold: 0.8,
         ...options
     };
