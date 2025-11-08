@@ -33,10 +33,20 @@ let controls = {
  * @param {Function} onRotate - Callback when rotation occurs (deltaX, deltaY) - optional
  * @param {Function} onSelect - Callback when item is selected/clicked - optional
  */
-export function initControls(container, onNavigateLeft, onNavigateRight, onRotate = null, onSelect = null, onToggleMusic = null) {
+export function initControls(
+    container,
+    onNavigateLeft,
+    onNavigateRight,
+    onRotate = null,
+    onSelect = null,
+    onToggleMusic = null,
+    onToggleBloom = null,
+    onQuantityDecrement = null,
+    onQuantityIncrement = null
+) {
     // Keyboard events
     window.addEventListener('keydown', (event) => {
-        handleKeyboard(event, onNavigateLeft, onNavigateRight, onToggleMusic);
+        handleKeyboard(event, onNavigateLeft, onNavigateRight, onToggleMusic, onToggleBloom);
     });
 
     // Gamepad events
@@ -81,6 +91,8 @@ export function initControls(container, onNavigateLeft, onNavigateRight, onRotat
     controls.onNavigateRight = onNavigateRight;
     controls.onRotate = onRotate;
     controls.onSelect = onSelect;
+    controls.onQuantityDecrement = onQuantityDecrement;
+    controls.onQuantityIncrement = onQuantityIncrement;
 
     // Start gamepad polling
     startGamepadPolling();
@@ -92,7 +104,7 @@ export function initControls(container, onNavigateLeft, onNavigateRight, onRotat
  * @param {Function} onNavigateLeft - Left navigation callback
  * @param {Function} onNavigateRight - Right navigation callback
  */
-function handleKeyboard(event, onNavigateLeft, onNavigateRight, onToggleMusic) {
+function handleKeyboard(event, onNavigateLeft, onNavigateRight, onToggleMusic, onToggleBloom) {
     // Prevent default for arrow keys to avoid scrolling
     if (['ArrowLeft', 'ArrowRight', 'a', 'd', 'A', 'D'].includes(event.key)) {
         event.preventDefault();
@@ -112,6 +124,10 @@ function handleKeyboard(event, onNavigateLeft, onNavigateRight, onToggleMusic) {
         case 'm':
         case 'M':
             if (onToggleMusic) onToggleMusic();
+            break;
+        case 'b':
+        case 'B':
+            if (onToggleBloom) onToggleBloom();
             break;
     }
 }
@@ -143,19 +159,24 @@ function startGamepadPolling() {
         const stickX = gamepad.axes[0];  // Left stick X axis
         
         // Combine all left inputs
-        const leftPressed = dPadLeft || leftShoulder;
-        // Combine all right inputs
-        const rightPressed = dPadRight || rightShoulder;
+        const leftNavPressed = leftShoulder;
+        const rightNavPressed = rightShoulder;
         
         // Threshold for stick input to avoid drift
         const stickThreshold = 0.5;
         
         // Check if button was just pressed (not held)
-        if (leftPressed && !lastButtonState.left) {
+        if (leftNavPressed && !lastButtonState.leftNav) {
             if (controls.onNavigateLeft) controls.onNavigateLeft();
         }
-        if (rightPressed && !lastButtonState.right) {
+        if (rightNavPressed && !lastButtonState.rightNav) {
             if (controls.onNavigateRight) controls.onNavigateRight();
+        }
+        if (dPadLeft && !lastButtonState.dPadLeft) {
+            if (controls.onQuantityDecrement) controls.onQuantityDecrement();
+        }
+        if (dPadRight && !lastButtonState.dPadRight) {
+            if (controls.onQuantityIncrement) controls.onQuantityIncrement();
         }
         
         // Check stick input (only trigger once per direction change)
@@ -174,8 +195,10 @@ function startGamepadPolling() {
         }
         
         // Update button state
-        lastButtonState.left = leftPressed;
-        lastButtonState.right = rightPressed;
+        lastButtonState.leftNav = leftNavPressed;
+        lastButtonState.rightNav = rightNavPressed;
+        lastButtonState.dPadLeft = dPadLeft;
+        lastButtonState.dPadRight = dPadRight;
         
         requestAnimationFrame(pollGamepad);
     }

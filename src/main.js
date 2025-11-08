@@ -3,12 +3,13 @@
  * Coordinates initialization, state management, and module communication
  */
 
-import { initScene, startRenderLoop, getScene, getCamera, getRenderer } from './scene.js';
+import * as THREE from 'three';
+import { initScene, startRenderLoop, getRenderer, getTopSpotlight } from './scene.js';
 import { initModelLoader, loadModel, getAvailableFoodItems } from './models.js';
 import { initControls } from './controls.js';
 import { initSelector, selectPrevious, selectNext, updateSelector, getSelectedItem, getSelectedIndex, getItemCount } from './selector.js';
-import { initPostProcessing, render as renderPostProcessing } from './postprocessing.js';
-import { initOverlay, animateOverlaySelectionChange, updateOverlayContent } from './ui/overlay.js';
+import { initPostProcessing, render as renderPostProcessing, setBloomEnabled, isBloomEnabled } from './postprocessing.js';
+import { initOverlay, animateOverlaySelectionChange, updateOverlayContent, adjustQuantity } from './ui/overlay.js';
 import { initShopkeeper } from './ui/shopkeeper.js';
 import { getFoodDetailsByName } from './data/foodDetails.js';
 import { loadSfx, playSfx } from './audio.js';
@@ -22,9 +23,17 @@ const state = {
     isMusicPlaying: false,
     sfx: {
         swipe: null,
-        loadingSwipe: null
+        loadingSwipe: null,
+        cancel: null,
+        loadingCancel: null,
+        ok: null,
+        loadingOk: null
     }
 };
+
+const spotlightTarget = new THREE.Vector3();
+const spotlightDesiredPosition = new THREE.Vector3();
+let musicToggleButton = null;
 
 const loadingUIState = {
     screen: null,
@@ -52,6 +61,8 @@ async function init() {
 
     // Prepare UI overlay (frosted panel) for future controls/info
     initOverlay();
+        setupMusicToggle();
+        document.addEventListener('overlay:quantity-change', handleQuantityChangeSound);
     initShopkeeper();
 
     try {
@@ -82,7 +93,10 @@ async function init() {
             handleNavigateRight,  // onNavigateRight
             null,                 // onRotate (optional)
             null,                 // onSelect (optional)
-            toggleMusic           // onToggleMusic
+            toggleMusic,          // onToggleMusic
+            toggleBloom,          // onToggleBloom
+            decrementOverlayQuantity, // onQuantityDecrement
+            incrementOverlayQuantity  // onQuantityIncrement
         );
         updateLoadingProgress(0.96);
         
@@ -90,6 +104,7 @@ async function init() {
         const renderer = getRenderer();
         const performanceTier = getPerformanceTier();
         const postProcessingConfig = getPostProcessingConfig(performanceTier);
+        console.log('Post-processing tier', performanceTier, postProcessingConfig);
         const composer = initPostProcessing(renderer, scene, camera, postProcessingConfig);
         updateLoadingProgress(0.98);
 
@@ -103,6 +118,7 @@ async function init() {
         state.lastFrameTime = performance.now();
         state.audio = createBackgroundAudio();
         preloadSwipeSfx();
+        updateMusicToggleButton();
         
         setLoadingStatus('Opening the shop…');
         updateLoadingProgress(1);
@@ -124,7 +140,10 @@ function handleNavigateLeft() {
     if (!state.initialized) return;
 
     const currentIndex = getSelectedIndex();
-    if (currentIndex <= 0) return; // hard stop reached
+    if (currentIndex <= 0) {
+        playCancelSound();
+        return; // hard stop reached
+    }
 
     animateOverlaySelectionChange();
     selectPrevious();
@@ -145,7 +164,10 @@ function handleNavigateRight() {
 
     const currentIndex = getSelectedIndex();
     const itemCount = getItemCount();
-    if (currentIndex >= itemCount - 1) return; // hard stop reached
+    if (currentIndex >= itemCount - 1) {
+        playCancelSound();
+        return; // hard stop reached
+    }
 
     animateOverlaySelectionChange();
     selectNext();
@@ -171,6 +193,25 @@ function update() {
     
     // Update selector (animations, scrolling, etc.)
     updateSelector(deltaTime);
+
+    const spotlight = getTopSpotlight();
+    const selectedItem = getSelectedItem();
+    if (spotlight && selectedItem && selectedItem.mesh) {
+        const mesh = selectedItem.mesh;
+        mesh.updateMatrixWorld(true);
+        
+        mesh.getWorldPosition(spotlightTarget);
+        spotlightTarget.y += 0.35;
+        
+        spotlightDesiredPosition.copy(spotlightTarget);
+        spotlightDesiredPosition.y += 2.6;
+        
+        const followEase = 1 - Math.exp(-12 * Math.min(deltaTime, 0.1));
+        
+        spotlight.position.lerp(spotlightDesiredPosition, followEase);
+        spotlight.target.position.lerp(spotlightTarget, followEase);
+        spotlight.target.updateMatrixWorld(true);
+    }
 }
 
 function updateOverlayWithCurrent() {
@@ -213,6 +254,46 @@ function preloadSwipeSfx() {
     return loadPromise;
 }
 
+function preloadCancelSfx() {
+    if (state.sfx.cancel || state.sfx.loadingCancel) {
+        return state.sfx.loadingCancel;
+    }
+    const loadPromise = loadSfx('Sounds/cancel-1.wav')
+        .then((asset) => {
+            state.sfx.cancel = asset;
+            return asset;
+        })
+        .catch((error) => {
+            console.warn('Failed to load cancel SFX:', error);
+            return null;
+        })
+        .finally(() => {
+            state.sfx.loadingCancel = null;
+        });
+    state.sfx.loadingCancel = loadPromise;
+    return loadPromise;
+}
+
+function preloadOkSfx() {
+    if (state.sfx.ok || state.sfx.loadingOk) {
+        return state.sfx.loadingOk;
+    }
+    const loadPromise = loadSfx('Sounds/ok-2.wav')
+        .then((asset) => {
+            state.sfx.ok = asset;
+            return asset;
+        })
+        .catch((error) => {
+            console.warn('Failed to load confirm SFX:', error);
+            return null;
+        })
+        .finally(() => {
+            state.sfx.loadingOk = null;
+        });
+    state.sfx.loadingOk = loadPromise;
+    return loadPromise;
+}
+
 function playSwipeSound() {
     if (!state.initialized) return;
 
@@ -228,6 +309,36 @@ function playSwipeSound() {
     });
 }
 
+function playCancelSound() {
+    if (!state.initialized) return;
+
+    if (state.sfx.cancel) {
+        playSfx(state.sfx.cancel, { volume: 0.55 });
+        return;
+    }
+
+    preloadCancelSfx().then((asset) => {
+        if (asset) {
+            playSfx(asset, { volume: 0.55 });
+        }
+    });
+}
+
+function playOkSound(playbackRate = 1.0) {
+    if (!state.initialized) return;
+
+    if (state.sfx.ok) {
+        playSfx(state.sfx.ok, { volume: 0.65, playbackRate });
+        return;
+    }
+
+    preloadOkSfx().then((asset) => {
+        if (asset) {
+            playSfx(asset, { volume: 0.65, playbackRate });
+        }
+    });
+}
+
 function toggleMusic() {
     if (!state.initialized) return;
     if (!state.audio) {
@@ -239,43 +350,93 @@ function toggleMusic() {
         state.audio.pause();
         state.isMusicPlaying = false;
         console.log('Music paused');
+        updateMusicToggleButton();
     } else {
         const playPromise = state.audio.play();
         if (playPromise && typeof playPromise.then === 'function') {
             playPromise.then(() => {
                 state.isMusicPlaying = true;
                 console.log('Music playing');
+                updateMusicToggleButton();
             }).catch((error) => {
                 console.warn('Music playback prevented:', error);
+                state.isMusicPlaying = false;
+                updateMusicToggleButton();
             });
         } else {
             state.isMusicPlaying = true;
             console.log('Music playing');
+            updateMusicToggleButton();
         }
     }
+}
+
+function toggleBloom() {
+    const currentlyEnabled = isBloomEnabled();
+    const nextState = !currentlyEnabled;
+    setBloomEnabled(nextState);
+    console.log(`Bloom ${nextState ? 'enabled' : 'disabled'}`);
+}
+
+function handleQuantityChangeSound(event) {
+    const detail = event.detail || {};
+    if (!detail.action) return;
+    if (detail.action === 'increment') {
+        playOkSound(1.0);
+    } else if (detail.action === 'decrement') {
+        playCancelSound();
+    }
+}
+
+function incrementOverlayQuantity() {
+    adjustQuantity('increment');
+}
+
+function decrementOverlayQuantity() {
+    adjustQuantity('decrement');
+}
+
+function setupMusicToggle() {
+    musicToggleButton = document.querySelector('[data-music-toggle]');
+    if (!musicToggleButton) return;
+    musicToggleButton.addEventListener('click', () => {
+        toggleMusic();
+    });
+    updateMusicToggleButton();
+}
+
+function updateMusicToggleButton() {
+    if (!musicToggleButton) return;
+    const active = state.isMusicPlaying;
+    musicToggleButton.setAttribute('aria-pressed', active ? 'true' : 'false');
+    musicToggleButton.classList.toggle('is-active', active);
 }
 
 function getPostProcessingConfig(tier) {
     switch (tier) {
         case 'low':
             return {
-                enabled: false
+                enabled: true,
+                renderScale: 0.25,
+                bloomStrength: 0.6,
+                bloomRadius: 2.1,
+                bloomThreshold: 0.982
             };
         case 'medium':
             return {
                 enabled: true,
                 renderScale: 0.35,
-                bloomStrength: 0.35,
-                bloomRadius: 0.6,
-                bloomThreshold: 0.85
+                bloomStrength: 1.0,
+                bloomRadius: 3.5,
+                bloomThreshold: 0.984
             };
         default:
             return {
                 enabled: true,
                 renderScale: 0.5,
-                bloomStrength: 0.45,
-                bloomRadius: 0.9,
-                bloomThreshold: 0.8
+                bloomStrength: 1.4,
+                bloomRadius: 5.0,
+                bloomThreshold: 0.986
             };
     }
 }

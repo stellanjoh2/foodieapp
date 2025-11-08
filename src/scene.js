@@ -9,6 +9,7 @@ import { updatePostProcessing } from './postprocessing.js';
 
 let scene, camera, renderer;
 let isRendering = true;
+let topSpotLight = null;
 
 /**
  * Initialize Three.js scene
@@ -36,7 +37,7 @@ export function initScene(container) {
     });
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(pixelRatio);
-    renderer.shadowMap.enabled = performanceTier !== 'low';
+    renderer.shadowMap.enabled = false;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     
     // Ensure canvas sits behind UI overlays
@@ -124,6 +125,18 @@ function setupLighting() {
     directionalLight.shadow.camera.bottom = -10;
     scene.add(directionalLight);
 
+    topSpotLight = new THREE.SpotLight(0xfff3d6, 2.2, 14, Math.PI / 6, 0.35, 1);
+    topSpotLight.position.set(0, 6, 0);
+    topSpotLight.target.position.set(0, 0, 0);
+    topSpotLight.visible = false;
+    topSpotLight.castShadow = false;
+    topSpotLight.shadow.mapSize.width = 4096;
+    topSpotLight.shadow.mapSize.height = 4096;
+    topSpotLight.shadow.camera.near = 0.3;
+    topSpotLight.shadow.camera.far = 25;
+    scene.add(topSpotLight);
+    scene.add(topSpotLight.target);
+
     // Fill light - desaturated warm tone from the front
     // Brightened by 20%: 0.4 * 1.2 = 0.48
     const fillLight = new THREE.DirectionalLight(0xfef8f0, 0.63888); // +10%
@@ -150,6 +163,10 @@ function setupLighting() {
     const rightPointLight = new THREE.PointLight(0xf8aa3b, 3.993, 50); // +10%
     rightPointLight.position.set(4, 0, 0); // Right side, closer to food items, same level
     scene.add(rightPointLight);
+}
+
+export function getTopSpotlight() {
+    return topSpotLight;
 }
 
 /**

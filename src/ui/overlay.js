@@ -169,13 +169,23 @@ function handleOverlayClick(event) {
     const button = event.target.closest('[data-quantity-action]');
     if (!button) return;
     const action = button.getAttribute('data-quantity-action');
-    if (!currentItemKey) return;
+    changeQuantity(action);
+}
+
+function changeQuantity(action) {
+    if (!currentItemKey || !overlayContent) return false;
+    if (action !== 'increment' && action !== 'decrement') return false;
 
     let quantity = getQuantity(currentItemKey);
+    const previousQuantity = quantity;
     if (action === 'increment') {
         quantity = Math.min(MAX_QUANTITY, quantity + 1);
-    } else if (action === 'decrement') {
+    } else {
         quantity = Math.max(MIN_QUANTITY, quantity - 1);
+    }
+
+    if (quantity === previousQuantity) {
+        return false;
     }
 
     quantityState.set(currentItemKey, quantity);
@@ -183,6 +193,22 @@ function handleOverlayClick(event) {
     if (valueEl) {
         valueEl.textContent = `${quantity}`;
     }
+
+    const detail = {
+        action,
+        itemKey: currentItemKey,
+        quantity
+    };
+    const changeEvent = new CustomEvent('overlay:quantity-change', {
+        detail,
+        bubbles: true
+    });
+    overlayContent.dispatchEvent(changeEvent);
+    return true;
+}
+
+export function adjustQuantity(action) {
+    return changeQuantity(action);
 }
 
 function getQuantity(itemKey) {

@@ -11,6 +11,10 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 
 let composer = null;
 let bloomPass = null;
+let rendererRef = null;
+let sceneRef = null;
+let cameraRef = null;
+let bloomEnabled = true;
 let bloomSettings = {
     enabled: true,
     renderScale: 0.5
@@ -89,18 +93,23 @@ const VignetteShader = {
  * @returns {EffectComposer} Post-processing composer
  */
 export function initPostProcessing(renderer, scene, camera, options = {}) {
+    rendererRef = renderer;
+    sceneRef = scene;
+    cameraRef = camera;
+
     const config = {
         enabled: true,
         renderScale: 0.5,
-        bloomStrength: 0.45,
-        bloomRadius: 0.9,
-        bloomThreshold: 0.8,
+        bloomStrength: 1.4,
+        bloomRadius: 5.0,
+        bloomThreshold: 0.986,
         ...options
     };
     bloomSettings = {
         enabled: config.enabled,
         renderScale: THREE.MathUtils.clamp(config.renderScale, 0.25, 1)
     };
+    bloomEnabled = !!config.enabled;
 
     if (!config.enabled) {
         composer = null;
@@ -129,7 +138,14 @@ export function initPostProcessing(renderer, scene, camera, options = {}) {
         config.bloomRadius,
         config.bloomThreshold
     );
+    bloomPass.enabled = bloomEnabled;
     composer.addPass(bloomPass);
+    console.log('Bloom pass initialized', {
+        strength: config.bloomStrength,
+        radius: config.bloomRadius,
+        threshold: config.bloomThreshold,
+        renderScale: bloomSettings.renderScale
+    });
     
     // Vignette disabled - bloom only
     
@@ -158,6 +174,8 @@ export function updatePostProcessing(width, height) {
 export function render() {
     if (composer) {
         composer.render();
+    } else if (rendererRef && sceneRef && cameraRef) {
+        rendererRef.render(sceneRef, cameraRef);
     }
 }
 
@@ -167,5 +185,16 @@ export function render() {
  */
 export function getComposer() {
     return composer;
+}
+
+export function setBloomEnabled(enabled) {
+    bloomEnabled = !!enabled;
+    if (bloomPass) {
+        bloomPass.enabled = bloomEnabled;
+    }
+}
+
+export function isBloomEnabled() {
+    return bloomEnabled && !!bloomPass;
 }
 

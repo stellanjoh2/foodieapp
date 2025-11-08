@@ -43,7 +43,7 @@ export async function loadSfx(url) {
     };
 }
 
-export function playSfx(loadedSfx, { volume = 1.0 } = {}) {
+export function playSfx(loadedSfx, { volume = 1.0, playbackRate = 1.0 } = {}) {
     if (!loadedSfx) return;
 
     if (loadedSfx.type === 'html') {
@@ -54,6 +54,7 @@ export function playSfx(loadedSfx, { volume = 1.0 } = {}) {
             console.warn('Unable to reset audio element', error);
         }
         audio.volume = volume;
+        audio.playbackRate = playbackRate;
         audio.play().catch((error) => {
             console.warn('Audio element playback prevented:', error);
         });
@@ -70,6 +71,7 @@ export function playSfx(loadedSfx, { volume = 1.0 } = {}) {
 
     const source = context.createBufferSource();
     source.buffer = loadedSfx.buffer;
+    source.playbackRate.value = playbackRate;
 
     const gainNode = context.createGain();
     gainNode.gain.value = volume;

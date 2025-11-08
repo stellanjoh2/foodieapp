@@ -26,10 +26,17 @@
             position: relative;
         }
 
-        .wallet-indicator {
+        .hud-indicators {
             position: absolute;
             top: 2.4rem;
             right: 2.8rem;
+            display: flex;
+            align-items: center;
+            gap: 1.6rem;
+            z-index: 1200;
+        }
+
+        .hud-pill {
             display: inline-flex;
             align-items: center;
             gap: 1.2rem;
@@ -37,10 +44,69 @@
             border-radius: 999px;
             background: rgba(255, 255, 255, 0.45);
             border: 1px solid rgba(255,255,255,0.6);
-            box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
-            z-index: 1200;
+            min-height: 82px;
+            transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+        }
+
+        .hud-pill .hud-icon {
+            width: 46px;
+            height: 46px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hud-pill .hud-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            transform: scale(1.25);
+            transform-origin: center;
+        }
+
+        @keyframes musicPulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.12);
+            }
+        }
+
+        .music-icon-button {
+            appearance: none;
+            border: none;
+            background: none;
+            padding: 0;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 180ms ease;
+        }
+
+        .music-icon-button img {
+            width: 54px;
+            height: 54px;
+            display: block;
+            transform-origin: center;
+        }
+
+        .music-icon-button:hover,
+        .music-icon-button:focus-visible {
+            transform: scale(1.08);
+            outline: none;
+        }
+
+        .music-icon-button.is-active img {
+            animation: musicPulse 1s ease-in-out infinite;
+        }
+
+        .wallet-indicator {
             text-shadow:
                 -3px -3px 0 rgba(255,255,255,0.92),
                 3px -3px 0 rgba(255,255,255,0.92),
@@ -50,11 +116,6 @@
         }
 
         .wallet-icon {
-            width: 46px;
-            height: 46px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             overflow: visible;
         }
 
@@ -448,11 +509,16 @@
             </div>
             <div class="shopkeeper-text" data-shopkeeper-text></div>
         </div>
-        <div class="wallet-indicator" aria-label="Available balance">
-            <span class="wallet-icon" aria-hidden="true">
-                <img src="Images/coin.PNG" alt="">
-            </span>
-            <span class="wallet-amount">$150</span>
+        <div class="hud-indicators">
+            <button class="music-icon-button" type="button" aria-label="Toggle background music" aria-pressed="false" data-music-toggle>
+                <img src="Images/music.PNG" alt="" aria-hidden="true">
+            </button>
+            <div class="hud-pill wallet-indicator" aria-label="Available balance">
+                <span class="hud-icon wallet-icon" aria-hidden="true">
+                    <img src="Images/coin.PNG" alt="">
+                </span>
+                <span class="wallet-amount">$150</span>
+            </div>
         </div>
         <div id="ui-overlay">
             <!-- Temporary internal test: frosted glass popup -->

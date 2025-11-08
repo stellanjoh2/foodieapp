@@ -306,6 +306,8 @@ function extractFoodItems(model) {
             if (foodItemKey) {
                 // Store the original mesh reference for cloning later
                 // We'll clone on demand to preserve textures properly
+                child.castShadow = true;
+                child.receiveShadow = true;
                 foodItems[foodItemKey] = {
                     mesh: child  // Original mesh from GLB
                 };
@@ -414,6 +416,8 @@ export function getFoodItem(itemName) {
     
     // Create new mesh with cloned geometry and material
     const clonedMesh = new THREE.Mesh(clonedGeometry, clonedMaterial);
+    clonedMesh.castShadow = true;
+    clonedMesh.receiveShadow = true;
     
     // Center the geometry pivot point so rotation happens around center
     // This ensures items rotate around their own center, not orbiting
