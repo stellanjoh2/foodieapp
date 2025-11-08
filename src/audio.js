@@ -87,8 +87,8 @@ export function disposeAudio() {
 }
 
 export function playTypeSound({
-    frequency = 1000,
-    duration = 0.06,
+    frequency = 280,
+    duration = 0.08,
     volume = 0.08
 } = {}) {
     const context = getAudioContext();
@@ -102,16 +102,21 @@ export function playTypeSound({
     const gain = context.createGain();
     const filter = context.createBiquadFilter();
 
-    osc.type = 'triangle';
-    osc.frequency.value = frequency;
+    const baseFreq = frequency + Math.random() * 40;
+
+    osc.type = 'sine';
+    osc.frequency.value = baseFreq;
 
     gain.gain.value = volume;
     filter.type = 'lowpass';
-    filter.frequency.value = frequency * 1.5;
+    filter.frequency.value = baseFreq * 3;
 
     const now = context.currentTime;
     gain.gain.setValueAtTime(volume, now);
-    gain.gain.linearRampToValueAtTime(0, now + duration);
+    gain.gain.exponentialRampToValueAtTime(volume * 0.4, now + duration * 0.4);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.35, now + duration);
 
     osc.connect(filter);
     filter.connect(gain);

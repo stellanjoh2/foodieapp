@@ -117,8 +117,8 @@ function showSpeech(line) {
         textEl.textContent += nextChar;
         if (nextChar.trim()) {
             playTypeSound({
-                frequency: 1100 + Math.random() * 500,
-                volume: 0.14
+                frequency: 260 + Math.random() * 80,
+                volume: 0.1
             });
         }
     }, TYPE_SPEED_MS);
