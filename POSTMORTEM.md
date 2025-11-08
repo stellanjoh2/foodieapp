@@ -24,6 +24,13 @@ We eventually shipped a feature-packed, stylized food selector with responsive U
 5. **Own the scope creep.** Politely push back or batch UI tweaks (“let’s collect three more color requests before restyling again”) instead of thrashing on the same component fifteen times.
 6. **Version assets.** Store texture/audios changes under dated folders or commit notes. If we brighten textures, keep the originals in a clear backup path, not just local scripts.
 
+### Side Note: How to Keep Me Off `main`
+- When you know a UI/visual sweep is coming, start the session with explicit branching instructions—e.g. *“work in `ui/hud-refresh`, don’t touch `main` until I say merge.”*
+- Ask for an approval gate before merge: *“open a PR from that branch; no direct pushes to `main`.”*
+- Once satisfied, have me squash and merge: *“squash the branch into one commit, push to `main`, then delete the branch.”*
+- Capture acceptance evidence (screenshots, values) in the PR so we can restore specific looks later.
+- If requirements keep moving, keep the branch alive and only merge once the feature is frozen.
+
 ## Final Thoughts
 We ended in a good spot because we brute-forced every request, but the process was messy. The next project should front-load verification, use branching discipline, and document visual baselines, so we’re not pulling all-nighters chasing features that were “prettier this morning.” Harsh lesson learned: instrumentation beats intuition every time.
 
