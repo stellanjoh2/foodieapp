@@ -8,23 +8,23 @@ const HOLD_AFTER_TYPE_MS = 3500;
 
 const APPEARANCES = [
     {
-        text: 'Hii~! Welcome to the shop! Everything’s super fresh today!',
+        text: 'Hii~! Welcome to the shop! Everything’s super fresh today! 🥳',
         expression: 'happy'
     },
     {
-        text: 'Hehe… um, are you lost or just inspecting every grain of rice?',
+        text: 'Hehe… um, are you lost or just inspecting every grain of rice? 👀',
         expression: 'neutral'
     },
     {
-        text: 'Okaaaay, that’s like the fifth lap around the shelf… what’s the plan?',
+        text: 'Okaaaay, that’s like the fifth lap around the shelf… what’s the plan? 🤔',
         expression: 'grumpy'
     },
     {
-        text: 'Tch—are you window-shopping or performing a full-on investigation?!',
+        text: 'Tch—are you window-shopping or performing a full-on investigation?! 😤',
         expression: 'grumpy'
     },
     {
-        text: 'BUY. SOMETHING. BEFORE I PUT YOU ON SALE!!',
+        text: 'BUY. SOMETHING. BEFORE I PUT YOU ON SALE!! 🔥',
         expression: 'angry'
     }
 ];
