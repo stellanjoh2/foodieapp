@@ -151,6 +151,19 @@
             opacity: 1;
         }
 
+        .shopkeeper.is-angry .shopkeeper-figure {
+            animation: shopkeeperShake 140ms steps(2, end) infinite;
+        }
+
+        @keyframes shopkeeperShake {
+            0% { transform: scaleX(-1) translate3d(0, 0, 0); }
+            20% { transform: scaleX(-1) translate3d(4px, -3px, 0); }
+            40% { transform: scaleX(-1) translate3d(-3px, 2px, 0); }
+            60% { transform: scaleX(-1) translate3d(3px, 3px, 0); }
+            80% { transform: scaleX(-1) translate3d(-4px, -2px, 0); }
+            100% { transform: scaleX(-1) translate3d(0, 0, 0); }
+        }
+
         .shopkeeper-figure {
             width: auto;
             height: min(38vh, 396px);

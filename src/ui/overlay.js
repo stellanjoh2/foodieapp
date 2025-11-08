@@ -185,6 +185,17 @@ function changeQuantity(action) {
     }
 
     if (quantity === previousQuantity) {
+        const detail = {
+            action,
+            itemKey: currentItemKey,
+            quantity,
+            blocked: true
+        };
+        const changeEvent = new CustomEvent('overlay:quantity-change', {
+            detail,
+            bubbles: true
+        });
+        overlayContent.dispatchEvent(changeEvent);
         return false;
     }
 
@@ -197,7 +208,8 @@ function changeQuantity(action) {
     const detail = {
         action,
         itemKey: currentItemKey,
-        quantity
+        quantity,
+        blocked: false
     };
     const changeEvent = new CustomEvent('overlay:quantity-change', {
         detail,

@@ -381,6 +381,10 @@ function toggleBloom() {
 function handleQuantityChangeSound(event) {
     const detail = event.detail || {};
     if (!detail.action) return;
+    if (detail.blocked) {
+        playCancelSound();
+        return;
+    }
     if (detail.action === 'increment') {
         playOkSound(1.0);
     } else if (detail.action === 'decrement') {

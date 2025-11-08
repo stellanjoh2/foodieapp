@@ -93,8 +93,9 @@ function triggerAppearance() {
 }
 
 function showShopkeeper(expression) {
-    if (!container) return;
+    if (!container || !imageEl) return;
     imageEl.src = getExpressionAsset(expression);
+    container.classList.toggle('is-angry', expression === 'angry');
     container.classList.add('is-visible');
 }
 
@@ -127,6 +128,7 @@ function showSpeech(line) {
 function hideShopkeeper(forceImmediate = false) {
     if (!container) return;
     container.classList.remove('is-visible');
+    container.classList.remove('is-angry');
     clearTypewriter();
     if (!forceImmediate) {
         // no-op reserved for future easing tweaks
