@@ -25,7 +25,7 @@ export function initScene(container) {
     // Camera
     const aspect = container.clientWidth / container.clientHeight;
     camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000); // FOV lowered to 45
-    camera.position.set(0, 0, 5);
+    camera.position.set(0, -0.1, 5);
 
     // Renderer
     const performanceTier = getPerformanceTier();
