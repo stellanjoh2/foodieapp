@@ -38,10 +38,7 @@ const loadingUIState = {
     displayComplete: false,
     hasError: false,
     startTime: 0,
-    completionTimeout: null,
-    enterButton: null,
-    isDismissed: false,
-    keyHandler: null
+    completionTimeout: null
 };
 
 /**
@@ -288,20 +285,17 @@ function setupLoadingUI() {
     const barFill = screen?.querySelector('[data-loading-bar]');
     const percentLabel = screen?.querySelector('[data-loading-percent]');
     const statusLabel = screen?.querySelector('[data-loading-status]');
-    const enterButton = screen?.querySelector('[data-loading-enter]');
 
     loadingUIState.screen = screen || null;
     loadingUIState.barFill = barFill || null;
     loadingUIState.percentLabel = percentLabel || null;
     loadingUIState.statusLabel = statusLabel || null;
-    loadingUIState.enterButton = enterButton || null;
     loadingUIState.fakeProgress = 0;
     loadingUIState.actualProgress = 0;
     loadingUIState.completed = false;
     loadingUIState.displayComplete = false;
     loadingUIState.hasError = false;
     loadingUIState.startTime = performance.now();
-    loadingUIState.isDismissed = false;
 
     if (loadingUIState.fakeTimer) {
         clearInterval(loadingUIState.fakeTimer);
@@ -309,17 +303,6 @@ function setupLoadingUI() {
     if (loadingUIState.completionTimeout) {
         clearTimeout(loadingUIState.completionTimeout);
         loadingUIState.completionTimeout = null;
-    }
-
-    if (loadingUIState.keyHandler) {
-        window.removeEventListener('keydown', loadingUIState.keyHandler);
-        loadingUIState.keyHandler = null;
-    }
-
-    if (enterButton) {
-        enterButton.hidden = true;
-        enterButton.disabled = true;
-        enterButton.addEventListener('click', handleLoadingEnterClick, { once: true });
     }
 
     if (screen) {
@@ -337,16 +320,6 @@ function setupLoadingUI() {
         );
         syncLoadingBar();
     }, 160);
-
-    if (!loadingUIState.isDismissed) {
-        loadingUIState.keyHandler = (event) => {
-            if (event.key === 'Enter' && loadingUIState.enterButton && !loadingUIState.enterButton.hidden) {
-                event.preventDefault();
-                dismissLoadingScreen();
-            }
-        };
-        window.addEventListener('keydown', loadingUIState.keyHandler);
-    }
 }
 
 function setLoadingStatus(message) {
@@ -402,14 +375,6 @@ function failLoadingUI(message) {
         clearTimeout(loadingUIState.completionTimeout);
         loadingUIState.completionTimeout = null;
     }
-    if (loadingUIState.enterButton) {
-        loadingUIState.enterButton.hidden = true;
-        loadingUIState.enterButton.disabled = true;
-    }
-    if (loadingUIState.keyHandler) {
-        window.removeEventListener('keydown', loadingUIState.keyHandler);
-        loadingUIState.keyHandler = null;
-    }
     loadingUIState.completed = true;
     loadingUIState.hasError = true;
     if (loadingUIState.screen) {
@@ -441,39 +406,9 @@ function syncLoadingBar(forceValue) {
 
     if (value >= 100 && loadingUIState.screen && !loadingUIState.hasError) {
         loadingUIState.screen.classList.add('is-complete');
-        if (loadingUIState.enterButton) {
-            loadingUIState.enterButton.hidden = false;
-            loadingUIState.enterButton.disabled = false;
-            loadingUIState.enterButton.focus();
-        }
-    }
-}
-
-function handleLoadingEnterClick(event) {
-    event.preventDefault();
-    dismissLoadingScreen();
-}
-
-function dismissLoadingScreen() {
-    if (loadingUIState.isDismissed) return;
-    loadingUIState.isDismissed = true;
-
-    if (loadingUIState.enterButton) {
-        loadingUIState.enterButton.disabled = true;
-    }
-
-    if (loadingUIState.keyHandler) {
-        window.removeEventListener('keydown', loadingUIState.keyHandler);
-        loadingUIState.keyHandler = null;
-    }
-
-    if (loadingUIState.screen) {
-        loadingUIState.screen.classList.add('is-hidden');
-        loadingUIState.screen.style.pointerEvents = 'none';
-    }
-
-    if (!state.isMusicPlaying) {
-        toggleMusic();
+        setTimeout(() => {
+            loadingUIState.screen?.classList.add('is-hidden');
+        }, 700);
     }
 }
 
