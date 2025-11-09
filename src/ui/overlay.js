@@ -190,12 +190,14 @@ function changeQuantity(action) {
     const valueEl = overlayContent.querySelector('[data-quantity-value]');
     if (valueEl) {
         valueEl.textContent = `${nextQuantity}`;
-        valueEl.classList.remove('quantity-value-burst');
-        void valueEl.offsetWidth; // force reflow
-        valueEl.classList.add('quantity-value-burst');
-        valueEl.addEventListener('animationend', () => {
+        if (action === 'increment') {
             valueEl.classList.remove('quantity-value-burst');
-        }, { once: true });
+            void valueEl.offsetWidth; // force reflow
+            valueEl.classList.add('quantity-value-burst');
+            valueEl.addEventListener('animationend', () => {
+                valueEl.classList.remove('quantity-value-burst');
+            }, { once: true });
+        }
     }
 
     emitQuantityChange(action, nextQuantity, false);
