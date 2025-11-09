@@ -94,7 +94,7 @@ export function spawnConfettiBurst() {
         sprite.material.opacity = 1.0;
         sprite.material.rotation = THREE.MathUtils.randFloatSpread(Math.PI);
 
-        const height = THREE.MathUtils.randFloat(0.02, 0.035);
+        const height = THREE.MathUtils.randFloat(0.024, 0.042); // 20% larger
         const width = height * (16 / 9);
         sprite.scale.set(
             width,
@@ -140,7 +140,7 @@ export function updateConfetti3D(delta) {
         sprite.position.add(tempVec);
 
         sprite.material.rotation += sprite.userData.angularVelocity * delta;
-        const fadeStart = data.ttl * 0.35;
+        const fadeStart = data.ttl * 0.5;
         if (data.life >= fadeStart) {
             const fadeProgress = (data.life - fadeStart) / (data.ttl - fadeStart);
             sprite.material.opacity = 1 - fadeProgress;
