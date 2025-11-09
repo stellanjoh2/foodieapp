@@ -10,6 +10,7 @@ import { updatePostProcessing } from './postprocessing.js';
 let scene, camera, renderer;
 let isRendering = true;
 let topSpotLight = null;
+let environmentMap = null;
 
 /**
  * Initialize Three.js scene
@@ -21,6 +22,7 @@ export function initScene(container) {
     scene = new THREE.Scene();
     // Sunset gradient background (purple → pink → orange → yellow-orange)
     scene.background = createSunsetGradient(container.clientWidth, container.clientHeight);
+    applyEnvironmentMap();
 
     // Camera
     const aspect = container.clientWidth / container.clientHeight;
@@ -165,6 +167,30 @@ function setupLighting() {
     const rightPointLight = new THREE.PointLight(0xf8aa3b, 3.993, 50); // +10%
     rightPointLight.position.set(4, 0, 0); // Right side, closer to food items, same level
     scene.add(rightPointLight);
+}
+
+function applyEnvironmentMap() {
+    if (environmentMap) {
+        scene.environment = environmentMap;
+        return;
+    }
+
+    const loader = new THREE.TextureLoader();
+    loader.load(
+        'Images/hdri_sky_782.jpg',
+        (texture) => {
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+            texture.encoding = THREE.sRGBEncoding;
+            environmentMap = texture;
+            if (scene) {
+                scene.environment = environmentMap;
+            }
+        },
+        undefined,
+        (error) => {
+            console.warn('Failed to load HDRI environment texture:', error);
+        }
+    );
 }
 
 export function getTopSpotlight() {
