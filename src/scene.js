@@ -14,6 +14,11 @@ let environmentMap = null;
 const DEFAULT_ENV_INTENSITY = 2.0;
 let environmentIntensity = DEFAULT_ENV_INTENSITY;
 const lightingRegistry = [];
+let gradientColors = {
+    top: '#e73827',
+    middle: '#f0573a',
+    bottom: '#f8aa3b'
+};
 
 /**
  * Initialize Three.js scene
@@ -89,13 +94,13 @@ function createSunsetGradient(width, height) {
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
     
     // Top: Dark red/velvet red
-    gradient.addColorStop(0, '#e73827');      // Dark red/velvet red
+    gradient.addColorStop(0, gradientColors.top);      // Dark red/velvet red
     
     // Transition through red-orange
-    gradient.addColorStop(0.5, '#f0573a');    // Bright red-orange
+    gradient.addColorStop(0.5, gradientColors.middle);    // Bright red-orange
     
     // Bottom: Bright orange/yellow
-    gradient.addColorStop(1, '#f8aa3b');      // Bright orange-yellow
+    gradient.addColorStop(1, gradientColors.bottom);      // Bright orange-yellow
     
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
@@ -294,6 +299,29 @@ function registerLightControl(entry) {
 
 export function getTopSpotlight() {
     return topSpotLight;
+}
+
+function updateSceneBackgroundGradient() {
+    if (!scene || !renderer) return;
+    const parent = renderer.domElement.parentElement;
+    const width = parent ? parent.clientWidth : renderer.domElement.width;
+    const height = parent ? parent.clientHeight : renderer.domElement.height;
+    scene.background = createSunsetGradient(width, height);
+}
+
+export function getBackgroundGradientColors() {
+    return { ...gradientColors };
+}
+
+export function setBackgroundGradientColors(update = {}) {
+    gradientColors = { ...gradientColors, ...update };
+    if (update.top || update.bottom) {
+        const topColor = new THREE.Color(gradientColors.top);
+        const bottomColor = new THREE.Color(gradientColors.bottom);
+        const middleColor = topColor.clone().lerp(bottomColor, 0.5);
+        gradientColors.middle = `#${middleColor.getHexString()}`;
+    }
+    updateSceneBackgroundGradient();
 }
 
 /**

@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { initScene, startRenderLoop, getRenderer, getTopSpotlight, setEnvironmentReflectionIntensity, getLightingRegistry, getEnvironmentReflectionIntensity } from './scene.js';
+import { initScene, startRenderLoop, getRenderer, getTopSpotlight, setEnvironmentReflectionIntensity, getLightingRegistry, getEnvironmentReflectionIntensity, getBackgroundGradientColors, setBackgroundGradientColors } from './scene.js';
 import { initModelLoader, loadModel } from './models.js';
 import { initControls } from './controls.js';
 import { initSelector, selectPrevious, selectNext, updateSelector, getSelectedItem, getSelectedIndex, getItemCount, addSpinImpulse } from './selector.js';
@@ -242,6 +242,31 @@ function playSfxKey(key, overrides = {}) {
     const trigger = (asset) => {
         if (asset) {
             playSfx(asset, { ...config, ...overrides });
+        }
+    };
+
+    const getContrastColor = (hex) => {
+        const clean = (hex || '').replace('#', '');
+        if (clean.length !== 6) return '#ffffff';
+        const r = parseInt(clean.substring(0, 2), 16);
+        const g = parseInt(clean.substring(2, 4), 16);
+        const b = parseInt(clean.substring(4, 6), 16);
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        return luminance > 0.6 ? '#2e1a12' : '#ffffff';
+    };
+
+    const setResetState = (button, { dirty = false, tint = null } = {}) => {
+        if (!button) return;
+        button.classList.toggle('is-dirty', !!dirty);
+        if (dirty && tint) {
+            button.style.background = tint;
+            button.style.color = getContrastColor(tint);
+        } else if (dirty) {
+            button.style.background = '';
+            button.style.color = '';
+        } else {
+            button.style.background = '';
+            button.style.color = '';
         }
     };
     const cached = sfxCache.get(key);
@@ -570,8 +595,11 @@ function setupLightingDebugPanel() {
     panel.className = 'lighting-debug-panel';
     panel.innerHTML = `
         <header class="lighting-debug-header">
-            <span>Lighting Debug</span>
-            <button type="button" class="lighting-debug-close" aria-label="Hide lighting debug">×</button>
+            <span class="lighting-debug-title">Lighting Debug</span>
+            <div class="lighting-debug-header-actions">
+                <button type="button" class="lighting-debug-copy" data-action="copy-settings">Copy Settings</button>
+                <button type="button" class="lighting-debug-close" aria-label="Hide lighting debug">×</button>
+            </div>
         </header>
         <div class="lighting-debug-body"></div>
     `;
@@ -600,6 +628,15 @@ function setupLightingDebugPanel() {
             background: rgba(240, 87, 58, 0.18);
             border-bottom: 1px solid rgba(0,0,0,0.08);
             font-weight: 600;
+        }
+        .lighting-debug-title {
+            font-weight: 600;
+            font-size: 1.05rem;
+        }
+        .lighting-debug-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
         }
         .lighting-debug-header button {
             border: none;
@@ -664,8 +701,8 @@ function setupLightingDebugPanel() {
         }
         .lighting-debug-reset {
             border: none;
-            background: rgba(240,87,58,0.12);
-            color: #f0573a;
+            background: rgba(0,0,0,0.08);
+            color: #8d7764;
             width: 28px;
             height: 28px;
             border-radius: 50%;
@@ -676,11 +713,15 @@ function setupLightingDebugPanel() {
             font-size: 0.95rem;
             transition: background 140ms ease, transform 140ms ease;
         }
-        .lighting-debug-reset:hover {
-            background: rgba(240,87,58,0.24);
+        .lighting-debug-reset:not(.is-dirty):hover {
+            background: rgba(0,0,0,0.16);
         }
         .lighting-debug-reset:active {
             transform: scale(0.92);
+        }
+        .lighting-debug-reset.is-dirty {
+            background: #f0573a;
+            color: #ffffff;
         }
         .lighting-debug-hex {
             width: 6.4rem;
@@ -709,10 +750,11 @@ function setupLightingDebugPanel() {
             border: none;
             background: rgba(240,87,58,0.18);
             color: #533822;
-            padding: 0.65rem 1rem;
-            border-radius: 12px;
+            padding: 0.45rem 0.75rem;
+            border-radius: 999px;
             font-family: inherit;
             font-weight: 600;
+            font-size: 0.85rem;
             cursor: pointer;
             transition: background 140ms ease, transform 140ms ease;
         }
@@ -785,6 +827,12 @@ function setupLightingDebugPanel() {
         reset.disabled = disabled;
 
         const originalValue = original ?? value;
+        const tolerance = Math.max(Number(step) || 0.0001, 0.0001) * 0.35;
+
+        const updateReset = (current) => {
+            const dirty = Math.abs(current - originalValue) > tolerance;
+            setResetState(reset, { dirty });
+        };
 
         const applyValue = (inputValue) => {
             const clamped = clamp(inputValue, Number(min), Number(max));
@@ -794,6 +842,7 @@ function setupLightingDebugPanel() {
             if (typeof onChange === 'function') {
                 onChange(fixed);
             }
+            updateReset(fixed);
         };
 
         if (!disabled) {
@@ -813,6 +862,7 @@ function setupLightingDebugPanel() {
             });
         }
 
+        updateReset(originalValue);
         controls.append(range, number, reset);
         field.appendChild(controls);
         return field;
@@ -846,7 +896,7 @@ function setupLightingDebugPanel() {
         reset.type = 'button';
         reset.className = 'lighting-debug-reset';
         reset.title = 'Reset to original value';
-        reset.innerText = '↺';
+        reset.innerText = '×';
         reset.disabled = disabled;
 
         const originalHex = original ?? value;
@@ -862,6 +912,8 @@ function setupLightingDebugPanel() {
             if (typeof onChange === 'function') {
                 onChange(normalized);
             }
+            const dirty = normalized !== originalHex;
+            setResetState(reset, { dirty, tint: dirty ? normalized : null });
             return true;
         };
 
@@ -886,6 +938,7 @@ function setupLightingDebugPanel() {
             });
         }
 
+        setResetState(reset, { dirty: false });
         controls.append(hexInput, colorInput, reset);
         field.appendChild(controls);
         return field;
@@ -956,6 +1009,26 @@ function setupLightingDebugPanel() {
     }));
     body.appendChild(envGroup);
 
+    const gradientState = getBackgroundGradientColors();
+    const backgroundGroup = document.createElement('div');
+    backgroundGroup.className = 'lighting-debug-group';
+    const backgroundHeading = document.createElement('h3');
+    backgroundHeading.textContent = 'Background';
+    backgroundGroup.appendChild(backgroundHeading);
+    backgroundGroup.appendChild(createColorField({
+        label: 'Top Color',
+        value: gradientState.top,
+        original: gradientState.top,
+        onChange: (hex) => setBackgroundGradientColors({ top: hex })
+    }));
+    backgroundGroup.appendChild(createColorField({
+        label: 'Bottom Color',
+        value: gradientState.bottom,
+        original: gradientState.bottom,
+        onChange: (hex) => setBackgroundGradientColors({ bottom: hex })
+    }));
+    body.appendChild(backgroundGroup);
+
     const bloomState = getBloomDebugSettings();
     const bloomOriginal = bloomState ? {
         strength: bloomState.strength,
@@ -1008,10 +1081,7 @@ function setupLightingDebugPanel() {
     }
     body.appendChild(bloomGroup);
 
-    const copyButton = document.createElement('button');
-    copyButton.type = 'button';
-    copyButton.className = 'lighting-debug-copy';
-    copyButton.textContent = 'Copy Settings';
+    const copyButton = panel.querySelector('[data-action="copy-settings"]');
     copyButton.addEventListener('click', async () => {
         const payload = {
             lights: lights.map(({ id, label, light }) => ({
@@ -1022,7 +1092,8 @@ function setupLightingDebugPanel() {
             })),
             environment: {
                 intensity: Number(getEnvironmentReflectionIntensity().toFixed(3))
-            }
+            },
+            backgroundGradient: getBackgroundGradientColors()
         };
         const bloomSnapshot = getBloomDebugSettings();
         if (bloomSnapshot) {
@@ -1051,7 +1122,6 @@ function setupLightingDebugPanel() {
             console.log('Lighting Settings\n', text);
         }
     });
-    body.appendChild(copyButton);
 
     const closeButton = panel.querySelector('.lighting-debug-close');
     closeButton.addEventListener('click', () => {
