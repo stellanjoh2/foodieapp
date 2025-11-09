@@ -193,6 +193,9 @@ function changeQuantity(action) {
         valueEl.classList.remove('quantity-value-burst');
         void valueEl.offsetWidth; // force reflow
         valueEl.classList.add('quantity-value-burst');
+        valueEl.addEventListener('animationend', () => {
+            valueEl.classList.remove('quantity-value-burst');
+        }, { once: true });
     }
 
     emitQuantityChange(action, nextQuantity, false);

@@ -107,12 +107,27 @@
         }
 
         .quantity-value {
-            transition: transform 200ms ease, opacity 200ms ease;
+            display: inline-block;
+            transform-origin: center;
         }
 
         .quantity-value-burst {
-            transform: scale(1.2);
-            opacity: 0.9;
+            animation: quantityValueBurst 200ms ease forwards;
+        }
+
+        @keyframes quantityValueBurst {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            40% {
+                transform: scale(1.2);
+                opacity: 0.9;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
 
         .wallet-indicator {
