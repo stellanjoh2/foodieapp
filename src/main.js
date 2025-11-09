@@ -613,39 +613,88 @@ function setupLightingDebugPanel() {
             padding: 0.8rem 1rem 1rem;
             display: grid;
             gap: 1rem;
+            overflow-y: auto;
+            max-height: calc(100vh - 7rem);
         }
         .lighting-debug-group {
             background: rgba(255,255,255,0.9);
             border: 1px solid rgba(0,0,0,0.06);
             border-radius: 12px;
-            padding: 0.75rem;
+            padding: 0.85rem 0.9rem 1rem;
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
         }
         .lighting-debug-group h3 {
-            margin: 0 0 0.6rem;
-            font-size: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            margin: 0 0 0.75rem;
+            font-size: 1.05rem;
             font-weight: 600;
         }
         .lighting-debug-field {
             display: flex;
-            align-items: center;
-            gap: 0.6rem;
+            flex-direction: column;
+            gap: 0.35rem;
             font-size: 0.9rem;
-            margin-bottom: 0.4rem;
+            margin-bottom: 0.6rem;
         }
         .lighting-debug-field:last-child {
             margin-bottom: 0;
         }
         .lighting-debug-field label {
-            flex: 0 0 80px;
             font-weight: 500;
         }
+        .lighting-debug-field-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+        }
         .lighting-debug-field input[type="range"] {
-            flex: 1;
+            flex: 1 1 auto;
             accent-color: #f0573a;
+        }
+        .lighting-debug-number {
+            width: 4.4rem;
+            padding: 0.25rem 0.35rem;
+            border-radius: 8px;
+            border: 1px solid rgba(0,0,0,0.12);
+            background: rgba(255,255,255,0.9);
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+        }
+        .lighting-debug-reset {
+            border: none;
+            background: rgba(240,87,58,0.12);
+            color: #f0573a;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            transition: background 140ms ease, transform 140ms ease;
+        }
+        .lighting-debug-reset:hover {
+            background: rgba(240,87,58,0.24);
+        }
+        .lighting-debug-reset:active {
+            transform: scale(0.92);
+        }
+        .lighting-debug-hex {
+            width: 6.4rem;
+            padding: 0.25rem 0.35rem;
+            border-radius: 8px;
+            border: 1px solid rgba(0,0,0,0.12);
+            background: rgba(255,255,255,0.9);
+            font-family: inherit;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            font-variant-numeric: tabular-nums;
+        }
+        .lighting-debug-hex.is-invalid {
+            border-color: #d74b4b;
+            box-shadow: 0 0 0 2px rgba(215,75,75,0.2);
         }
         .lighting-debug-field input[type="color"] {
             flex: 0 0 44px;
@@ -655,10 +704,25 @@ function setupLightingDebugPanel() {
             background: transparent;
             cursor: pointer;
         }
-        .lighting-debug-value {
-            font-variant-numeric: tabular-nums;
-            min-width: 3.6ch;
-            text-align: right;
+        .lighting-debug-copy {
+            border: none;
+            background: rgba(240,87,58,0.18);
+            color: #533822;
+            padding: 0.65rem 1rem;
+            border-radius: 12px;
+            font-family: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 140ms ease, transform 140ms ease;
+        }
+        .lighting-debug-copy:hover {
+            background: rgba(240,87,58,0.28);
+        }
+        .lighting-debug-copy:active {
+            transform: translateY(1px);
+        }
+        .lighting-debug-copy.is-success {
+            background: rgba(106,199,122,0.28);
         }
     `;
     document.head.appendChild(style);
@@ -668,127 +732,325 @@ function setupLightingDebugPanel() {
 
     const body = panel.querySelector('.lighting-debug-body');
 
-    const createGroup = (descriptor) => {
-        const { light, label, type } = descriptor;
-        const group = document.createElement('div');
-        group.className = 'lighting-debug-group';
-        const groupId = `light-${descriptor.id}`;
-        const minIntensity = Array.isArray(descriptor.intensityRange) ? descriptor.intensityRange[0] : (descriptor.minIntensity ?? 0);
-        const maxIntensity = Array.isArray(descriptor.intensityRange) ? descriptor.intensityRange[1] : (descriptor.maxIntensity ?? 5);
-        const intensityStep = descriptor.intensityStep ?? 0.01;
-        group.innerHTML = `
-            <h3>${label}<span>${type}</span></h3>
-            <div class="lighting-debug-field">
-                <label for="${groupId}-intensity">Intensity</label>
-                <input id="${groupId}-intensity" type="range" min="${minIntensity}" max="${maxIntensity}" step="${intensityStep}" value="${light.intensity.toFixed(2)}">
-                <span class="lighting-debug-value" data-value>${light.intensity.toFixed(2)}</span>
-            </div>
-            <div class="lighting-debug-field">
-                <label for="${groupId}-color">Color</label>
-                <input id="${groupId}-color" type="color" value="#${light.color.getHexString()}">
-            </div>
-        `;
-
-        const intensityInput = group.querySelector(`#${groupId}-intensity`);
-        const intensityValue = group.querySelector('[data-value]');
-        intensityInput.addEventListener('input', () => {
-            const value = Number(intensityInput.value);
-            light.intensity = value;
-            if (type === 'SpotLight') {
-                light.visible = value > 0.01;
-            }
-            if (light.decay !== undefined && type === 'PointLight') {
-                light.decay = 2.0;
-            }
-            intensityValue.textContent = value.toFixed(2);
-        });
-        if (type === 'SpotLight') {
-            light.visible = light.intensity > 0.01;
+    const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+    const formatNumber = (value, decimals = 2) => Number(value).toFixed(decimals);
+    const normalizeHex = (value) => {
+        let hex = String(value || '').trim();
+        if (!hex) return null;
+        if (!hex.startsWith('#')) hex = `#${hex}`;
+        if (/^#([0-9a-f]{3})$/i.test(hex)) {
+            const shorthand = hex.slice(1);
+            hex = `#${shorthand.split('').map((c) => c + c).join('')}`;
         }
-
-        const colorInput = group.querySelector(`#${groupId}-color`);
-        colorInput.addEventListener('input', () => {
-            light.color.set(colorInput.value);
-        });
-
-        body.appendChild(group);
+        if (!/^#([0-9a-f]{6})$/i.test(hex)) {
+            return null;
+        }
+        return hex.toUpperCase();
     };
 
-    lights.forEach(createGroup);
+    const createRangeField = ({ label, min, max, step, value, original, decimals = 2, disabled = false, onChange }) => {
+        const field = document.createElement('div');
+        field.className = 'lighting-debug-field';
 
+        const labelEl = document.createElement('label');
+        labelEl.textContent = label;
+        field.appendChild(labelEl);
+
+        const controls = document.createElement('div');
+        controls.className = 'lighting-debug-field-controls';
+
+        const range = document.createElement('input');
+        range.type = 'range';
+        range.min = min;
+        range.max = max;
+        range.step = step;
+        range.value = value;
+        range.disabled = disabled;
+
+        const number = document.createElement('input');
+        number.type = 'number';
+        number.className = 'lighting-debug-number';
+        number.min = min;
+        number.max = max;
+        number.step = step;
+        number.value = formatNumber(value, decimals);
+        number.disabled = disabled;
+
+        const reset = document.createElement('button');
+        reset.type = 'button';
+        reset.className = 'lighting-debug-reset';
+        reset.title = 'Reset to original value';
+        reset.innerText = '↺';
+        reset.disabled = disabled;
+
+        const originalValue = original ?? value;
+
+        const applyValue = (inputValue) => {
+            const clamped = clamp(inputValue, Number(min), Number(max));
+            const fixed = parseFloat(formatNumber(clamped, decimals));
+            range.value = fixed;
+            number.value = formatNumber(fixed, decimals);
+            if (typeof onChange === 'function') {
+                onChange(fixed);
+            }
+        };
+
+        if (!disabled) {
+            range.addEventListener('input', () => {
+                applyValue(Number(range.value));
+            });
+            number.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    applyValue(Number(number.value));
+                }
+            });
+            number.addEventListener('blur', () => {
+                applyValue(Number(number.value));
+            });
+            reset.addEventListener('click', () => {
+                applyValue(originalValue);
+            });
+        }
+
+        controls.append(range, number, reset);
+        field.appendChild(controls);
+        return field;
+    };
+
+    const createColorField = ({ label, value, original, disabled = false, onChange }) => {
+        const field = document.createElement('div');
+        field.className = 'lighting-debug-field';
+
+        const labelEl = document.createElement('label');
+        labelEl.textContent = label;
+        field.appendChild(labelEl);
+
+        const controls = document.createElement('div');
+        controls.className = 'lighting-debug-field-controls';
+
+        const hexInput = document.createElement('input');
+        hexInput.type = 'text';
+        hexInput.className = 'lighting-debug-hex';
+        hexInput.value = value;
+        hexInput.maxLength = 7;
+        hexInput.placeholder = '#FFFFFF';
+        hexInput.disabled = disabled;
+
+        const colorInput = document.createElement('input');
+        colorInput.type = 'color';
+        colorInput.value = value;
+        colorInput.disabled = disabled;
+
+        const reset = document.createElement('button');
+        reset.type = 'button';
+        reset.className = 'lighting-debug-reset';
+        reset.title = 'Reset to original value';
+        reset.innerText = '↺';
+        reset.disabled = disabled;
+
+        const originalHex = original ?? value;
+
+        const applyHex = (hex) => {
+            const normalized = normalizeHex(hex);
+            if (!normalized) {
+                hexInput.value = colorInput.value.toUpperCase();
+                return false;
+            }
+            hexInput.value = normalized;
+            colorInput.value = normalized;
+            if (typeof onChange === 'function') {
+                onChange(normalized);
+            }
+            return true;
+        };
+
+        if (!disabled) {
+            colorInput.addEventListener('input', () => {
+                applyHex(colorInput.value);
+            });
+            const handleHexCommit = () => {
+                if (!applyHex(hexInput.value)) {
+                    hexInput.classList.add('is-invalid');
+                    setTimeout(() => hexInput.classList.remove('is-invalid'), 800);
+                }
+            };
+            hexInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    handleHexCommit();
+                }
+            });
+            hexInput.addEventListener('blur', handleHexCommit);
+            reset.addEventListener('click', () => {
+                applyHex(originalHex);
+            });
+        }
+
+        controls.append(hexInput, colorInput, reset);
+        field.appendChild(controls);
+        return field;
+    };
+
+    lights.forEach((descriptor) => {
+        const { light, label, intensityRange, intensityStep } = descriptor;
+        const group = document.createElement('div');
+        group.className = 'lighting-debug-group';
+
+        const heading = document.createElement('h3');
+        heading.textContent = label;
+        group.appendChild(heading);
+
+        const minIntensity = intensityRange ? intensityRange[0] : 0;
+        const maxIntensity = intensityRange ? intensityRange[1] : 5;
+        const step = intensityStep ?? 0.01;
+        const originalIntensity = light.intensity;
+        const intensityField = createRangeField({
+            label: 'Intensity',
+            min: minIntensity,
+            max: maxIntensity,
+            step: step,
+            value: light.intensity,
+            original: originalIntensity,
+            onChange: (val) => {
+                light.intensity = val;
+                if (descriptor.type === 'SpotLight') {
+                    light.visible = val > 0.01;
+                }
+                if (light.decay !== undefined && descriptor.type === 'PointLight') {
+                    light.decay = 2.0;
+                }
+            }
+        });
+        group.appendChild(intensityField);
+
+        if (light.color) {
+            const originalColor = `#${light.color.getHexString().toUpperCase()}`;
+            const colorField = createColorField({
+                label: 'Color',
+                value: originalColor,
+                original: originalColor,
+                onChange: (hex) => {
+                    light.color.set(hex);
+                }
+            });
+            group.appendChild(colorField);
+        }
+
+        body.appendChild(group);
+    });
+
+    const envOriginal = getEnvironmentReflectionIntensity();
     const envGroup = document.createElement('div');
     envGroup.className = 'lighting-debug-group';
-    const currentEnv = getEnvironmentReflectionIntensity();
-    envGroup.innerHTML = `
-        <h3>Environment<span>Reflection</span></h3>
-        <div class="lighting-debug-field">
-            <label for="env-intensity">Intensity</label>
-            <input id="env-intensity" type="range" min="0" max="4" step="0.05" value="${currentEnv.toFixed(2)}">
-            <span class="lighting-debug-value" data-value>${currentEnv.toFixed(2)}</span>
-        </div>
-    `;
-    const envSlider = envGroup.querySelector('#env-intensity');
-    const envValue = envGroup.querySelector('[data-value]');
-    envSlider.addEventListener('input', () => {
-        const value = Number(envSlider.value);
-        envValue.textContent = value.toFixed(2);
-        setEnvironmentReflectionIntensity(value);
-    });
+    const envHeading = document.createElement('h3');
+    envHeading.textContent = 'Environment';
+    envGroup.appendChild(envHeading);
+    envGroup.appendChild(createRangeField({
+        label: 'Intensity',
+        min: 0,
+        max: 4,
+        step: 0.05,
+        value: envOriginal,
+        original: envOriginal,
+        onChange: (val) => setEnvironmentReflectionIntensity(val)
+    }));
     body.appendChild(envGroup);
 
-    const bloom = getBloomDebugSettings();
+    const bloomState = getBloomDebugSettings();
+    const bloomOriginal = bloomState ? {
+        strength: bloomState.strength,
+        radius: bloomState.radius,
+        threshold: bloomState.threshold
+    } : null;
     const bloomGroup = document.createElement('div');
     bloomGroup.className = 'lighting-debug-group';
-    const bloomActive = Boolean(bloom);
-    const bloomStrength = bloom?.strength ?? 0;
-    const bloomRadius = bloom?.radius ?? 0;
-    const bloomThreshold = bloom?.threshold ?? 0.96;
-    bloomGroup.innerHTML = `
-        <h3>Bloom<span>Post FX</span></h3>
-        <div class="lighting-debug-field">
-            <label for="bloom-strength">Strength</label>
-            <input id="bloom-strength" type="range" min="0" max="4" step="0.05" value="${bloomStrength.toFixed(2)}" ${bloomActive ? '' : 'disabled'}>
-            <span class="lighting-debug-value" data-value-strength>${bloomStrength.toFixed(2)}</span>
-        </div>
-        <div class="lighting-debug-field">
-            <label for="bloom-radius">Radius</label>
-            <input id="bloom-radius" type="range" min="0" max="10" step="0.1" value="${bloomRadius.toFixed(1)}" ${bloomActive ? '' : 'disabled'}>
-            <span class="lighting-debug-value" data-value-radius>${bloomRadius.toFixed(1)}</span>
-        </div>
-        <div class="lighting-debug-field">
-            <label for="bloom-threshold">Threshold</label>
-            <input id="bloom-threshold" type="range" min="0" max="1" step="0.01" value="${bloomThreshold.toFixed(2)}" ${bloomActive ? '' : 'disabled'}>
-            <span class="lighting-debug-value" data-value-threshold>${bloomThreshold.toFixed(2)}</span>
-        </div>
-        ${bloomActive ? '' : '<p style="margin-top:0.5rem;font-size:0.85rem;color:#a25b39;">Bloom controls unavailable (effect disabled or not initialised).</p>'}
-    `;
-
-    const strengthInput = bloomGroup.querySelector('#bloom-strength');
-    const radiusInput = bloomGroup.querySelector('#bloom-radius');
-    const thresholdInput = bloomGroup.querySelector('#bloom-threshold');
-    const strengthValue = bloomGroup.querySelector('[data-value-strength]');
-    const radiusValue = bloomGroup.querySelector('[data-value-radius]');
-    const thresholdValue = bloomGroup.querySelector('[data-value-threshold]');
-
-    if (bloomActive) {
-        strengthInput.addEventListener('input', () => {
-            const strength = Number(strengthInput.value);
-            strengthValue.textContent = strength.toFixed(2);
-            setBloomDebugSettings({ strength });
-        });
-        radiusInput.addEventListener('input', () => {
-            const radius = Number(radiusInput.value);
-            radiusValue.textContent = radius.toFixed(1);
-            setBloomDebugSettings({ radius });
-        });
-        thresholdInput.addEventListener('input', () => {
-            const threshold = Number(thresholdInput.value);
-            thresholdValue.textContent = threshold.toFixed(2);
-            setBloomDebugSettings({ threshold });
-        });
+    const bloomHeading = document.createElement('h3');
+    bloomHeading.textContent = 'Bloom';
+    bloomGroup.appendChild(bloomHeading);
+    bloomGroup.appendChild(createRangeField({
+        label: 'Strength',
+        min: 0,
+        max: 4,
+        step: 0.05,
+        value: bloomState?.strength ?? 0,
+        original: bloomOriginal?.strength ?? 0,
+        disabled: !bloomState,
+        onChange: (val) => setBloomDebugSettings({ strength: val })
+    }));
+    bloomGroup.appendChild(createRangeField({
+        label: 'Radius',
+        min: 0,
+        max: 10,
+        step: 0.1,
+        value: bloomState?.radius ?? 0,
+        original: bloomOriginal?.radius ?? 0,
+        decimals: 1,
+        disabled: !bloomState,
+        onChange: (val) => setBloomDebugSettings({ radius: val })
+    }));
+    bloomGroup.appendChild(createRangeField({
+        label: 'Threshold',
+        min: 0,
+        max: 1,
+        step: 0.01,
+        value: bloomState?.threshold ?? 0.96,
+        original: bloomOriginal?.threshold ?? 0.96,
+        disabled: !bloomState,
+        onChange: (val) => setBloomDebugSettings({ threshold: val })
+    }));
+    if (!bloomState) {
+        const message = document.createElement('p');
+        message.textContent = 'Bloom controls unavailable (effect disabled or not initialised).';
+        message.style.marginTop = '0.5rem';
+        message.style.fontSize = '0.85rem';
+        message.style.color = '#a25b39';
+        bloomGroup.appendChild(message);
     }
-
     body.appendChild(bloomGroup);
+
+    const copyButton = document.createElement('button');
+    copyButton.type = 'button';
+    copyButton.className = 'lighting-debug-copy';
+    copyButton.textContent = 'Copy Settings';
+    copyButton.addEventListener('click', async () => {
+        const payload = {
+            lights: lights.map(({ id, label, light }) => ({
+                id,
+                label,
+                intensity: Number(light.intensity.toFixed(3)),
+                color: light.color ? `#${light.color.getHexString().toUpperCase()}` : null
+            })),
+            environment: {
+                intensity: Number(getEnvironmentReflectionIntensity().toFixed(3))
+            }
+        };
+        const bloomSnapshot = getBloomDebugSettings();
+        if (bloomSnapshot) {
+            payload.bloom = {
+                strength: Number(bloomSnapshot.strength.toFixed(3)),
+                radius: Number(bloomSnapshot.radius.toFixed(3)),
+                threshold: Number(bloomSnapshot.threshold.toFixed(3))
+            };
+        }
+        const text = JSON.stringify(payload, null, 2);
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(text);
+                copyButton.classList.add('is-success');
+                const originalLabel = copyButton.textContent;
+                copyButton.textContent = 'Copied!';
+                setTimeout(() => {
+                    copyButton.classList.remove('is-success');
+                    copyButton.textContent = originalLabel;
+                }, 1600);
+            } else {
+                throw new Error('Clipboard API not available');
+            }
+        } catch (error) {
+            console.warn('Copy failed, logging settings to console instead.', error);
+            console.log('Lighting Settings\n', text);
+        }
+    });
+    body.appendChild(copyButton);
 
     const closeButton = panel.querySelector('.lighting-debug-close');
     closeButton.addEventListener('click', () => {
