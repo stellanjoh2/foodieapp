@@ -16,12 +16,19 @@ import { loadSfx, playSfx } from './audio.js';
 import { getPerformanceTier } from './utils.js';
 import { initConfetti3D, spawnConfettiBurst, updateConfetti3D } from './confetti3d.js';
 
+let walletAmountEl = null;
+
 // Application state
 const state = {
     initialized: false,
     lastFrameTime: performance.now(),
     audio: null,
-    isMusicPlaying: false
+    isMusicPlaying: false,
+    currentItemPrice: 0,
+    wallet: {
+        balance: 250,
+        initial: 250
+    }
 };
 
 const spotlightTarget = new THREE.Vector3();
@@ -55,6 +62,8 @@ const loadingUIState = {
  */
 async function init() {
     const container = document.getElementById('canvas-container');
+    walletAmountEl = document.querySelector('[data-wallet-amount]');
+    updateWalletDisplay();
     setupLoadingUI();
     setLoadingStatus('Loading kitchen assets…');
     updateLoadingProgress(0);
@@ -181,6 +190,7 @@ function updateOverlayWithCurrent() {
     const selected = getSelectedItem();
     if (!selected) return;
     const details = getFoodDetailsByName(selected.name);
+    state.currentItemPrice = details?.price ?? 0;
     updateOverlayContent(selected.name, details);
 }
 
@@ -281,21 +291,36 @@ function toggleBloom() {
 
 function handleQuantityChangeSound(event) {
     const detail = event.detail || {};
-    if (!detail.action) return;
+    const action = detail.action;
+    if (!action) return;
+
     if (detail.blocked) {
-        playCancelSound();
+        if (action === 'increment') {
+            playCancelSound();
+        }
         return;
     }
-    if (detail.action === 'increment') {
+
+    const price = Math.max(0, state.currentItemPrice || 0);
+
+    if (action === 'increment') {
+        if (price > 0) {
+            state.wallet.balance = Math.max(0, state.wallet.balance - price);
+        }
         playOkSound(1.0);
         const selected = getSelectedItem();
         if (selected?.mesh) {
             addSpinImpulse(selected.mesh);
         }
         spawnConfettiBurst();
-    } else if (detail.action === 'decrement') {
+    } else if (action === 'decrement') {
+        if (price > 0) {
+            state.wallet.balance = Math.min(state.wallet.initial, state.wallet.balance + price);
+        }
         playCancelSound();
     }
+
+    updateWalletDisplay();
 }
 
 function incrementOverlayQuantity() {
@@ -513,5 +538,15 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
     init();
+}
+
+function updateWalletDisplay() {
+    if (!walletAmountEl) return;
+    walletAmountEl.textContent = `$${Math.round(state.wallet.balance)}`;
+    const indicator = walletAmountEl.closest('.wallet-indicator');
+    if (indicator) {
+        indicator.classList.toggle('is-empty', state.wallet.balance <= 0);
+        indicator.classList.toggle('is-low', state.wallet.balance > 0 && state.wallet.balance < 100);
+    }
 }
 

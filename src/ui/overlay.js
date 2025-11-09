@@ -5,7 +5,7 @@ const COLLAPSE_DURATION_MS = 220; // matches CSS transition timing
 const HOLD_DURATION_MS = 80; // time to stay collapsed before expanding
 const NAME_FADE_DURATION_MS = 110;
 const META_STAGGER_MS = 70;
-const MIN_QUANTITY = 1;
+const MIN_QUANTITY = 0;
 const MAX_QUANTITY = 9;
 
 let expandTimeout = null;

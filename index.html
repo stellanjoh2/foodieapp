@@ -137,6 +137,7 @@
                 -3px 3px 0 rgba(255,255,255,0.92),
                 3px 3px 0 rgba(255,255,255,0.92),
                 0 0 18px rgba(255,255,255,0.75);
+            transition: transform 200ms ease;
         }
 
         .wallet-icon {
@@ -148,12 +149,40 @@
             font-weight: 700;
             letter-spacing: 0.01em;
             color: #533822;
+            display: inline-block;
+            min-width: 4.4ch;
+            text-align: right;
             text-shadow:
                 -2px -2px 0 rgba(255,255,255,0.92),
                 2px -2px 0 rgba(255,255,255,0.92),
                 -2px 2px 0 rgba(255,255,255,0.92),
                 2px 2px 0 rgba(255,255,255,0.92),
                 0 0 12px rgba(255,255,255,0.6);
+            transition: color 180ms ease, text-shadow 180ms ease;
+        }
+
+        .wallet-indicator.is-low {
+            transform: scale(0.95);
+        }
+
+        .wallet-indicator.is-empty .wallet-amount {
+            color: #d02a2a;
+            text-shadow:
+                -2px -2px 0 rgba(255,255,255,0.92),
+                2px -2px 0 rgba(255,255,255,0.92),
+                -2px 2px 0 rgba(255,255,255,0.92),
+                2px 2px 0 rgba(255,255,255,0.92),
+                0 0 12px rgba(255,255,255,0.75);
+            animation: walletEmptyPulse 720ms ease-in-out infinite;
+        }
+
+        @keyframes walletEmptyPulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.45;
+            }
         }
 
         .shopkeeper {
@@ -562,7 +591,7 @@
                 <span class="hud-icon wallet-icon" aria-hidden="true">
                     <img src="Images/coin.PNG" alt="">
                 </span>
-                <span class="wallet-amount">$150</span>
+                <span class="wallet-amount" data-wallet-amount>$250</span>
             </div>
         </div>
         <div id="ui-overlay">
