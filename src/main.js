@@ -596,10 +596,7 @@ function setupLightingDebugPanel() {
     panel.innerHTML = `
         <header class="lighting-debug-header">
             <span class="lighting-debug-title">Lighting Debug</span>
-            <div class="lighting-debug-header-actions">
-                <button type="button" class="lighting-debug-copy" data-action="copy-settings">Copy Settings</button>
-                <button type="button" class="lighting-debug-close" aria-label="Hide lighting debug">×</button>
-            </div>
+            <button type="button" class="lighting-debug-close" aria-label="Hide lighting debug">×</button>
         </header>
         <div class="lighting-debug-body"></div>
     `;
@@ -609,7 +606,7 @@ function setupLightingDebugPanel() {
         .lighting-debug-panel {
             position: fixed;
             bottom: 1.5rem;
-            left: 1.5rem;
+            right: 1.5rem;
             background: rgba(255, 255, 255, 0.94);
             border-radius: 16px;
             box-shadow: 0 18px 40px rgba(0,0,0,0.18);
@@ -620,12 +617,12 @@ function setupLightingDebugPanel() {
             color: #533822;
             z-index: 9999;
             opacity: 0;
-            transform: translateY(12px);
+            transform: translateX(20px);
             transition: opacity 160ms ease, transform 160ms ease;
         }
         .lighting-debug-panel.is-visible {
             opacity: 1;
-            transform: translateY(0);
+            transform: translateX(0);
         }
         .lighting-debug-header {
             display: flex;
@@ -639,11 +636,6 @@ function setupLightingDebugPanel() {
         .lighting-debug-title {
             font-weight: 600;
             font-size: 1.05rem;
-        }
-        .lighting-debug-header-actions {
-            display: flex;
-            align-items: center;
-            gap: 0.55rem;
         }
         .lighting-debug-header button {
             border: none;
@@ -749,7 +741,7 @@ function setupLightingDebugPanel() {
             box-shadow: 0 0 0 2px rgba(215,75,75,0.2);
         }
         .lighting-debug-color {
-            width: 46px;
+            width: 64px;
             height: 28px;
             border: 1px solid rgba(0,0,0,0.12);
             border-radius: 12px;
@@ -767,6 +759,9 @@ function setupLightingDebugPanel() {
             font-size: 0.85rem;
             cursor: pointer;
             transition: background 140ms ease, transform 140ms ease;
+            width: 100%;
+            text-align: center;
+            margin-top: 0.6rem;
         }
         .lighting-debug-copy:hover {
             background: rgba(240,87,58,0.28);
@@ -777,9 +772,16 @@ function setupLightingDebugPanel() {
         .lighting-debug-copy.is-success {
             background: rgba(106,199,122,0.28);
         }
+        body[data-lighting-debug="open"] .hud-indicators,
+        body[data-lighting-debug="open"] #ui-overlay,
+        body[data-lighting-debug="open"] .shopkeeper {
+            opacity: 0;
+            pointer-events: none;
+        }
     `;
     document.head.appendChild(style);
     document.body.appendChild(panel);
+    document.body.setAttribute('data-lighting-debug', 'open');
     lightingDebugPanel = panel;
     lightingDebugStyle = style;
     requestAnimationFrame(() => {
@@ -950,7 +952,7 @@ function setupLightingDebugPanel() {
                 onChange(normalized);
             }
             const dirty = normalized !== originalHex;
-            setResetState(reset, { dirty, tint: dirty ? normalized : null });
+            setResetState(reset, { dirty });
             return true;
         };
 
@@ -1171,6 +1173,7 @@ function setupLightingDebugPanel() {
     const closeButton = panel.querySelector('.lighting-debug-close');
     closeButton.addEventListener('click', () => {
         panel.classList.remove('is-visible');
+        document.body.removeAttribute('data-lighting-debug');
         setTimeout(() => {
             panel.remove();
             style.remove();
@@ -1184,12 +1187,16 @@ function teardownLightingDebugPanel() {
     if (lightingDebugPanel) {
         lightingDebugPanel.classList.remove('is-visible');
         const panel = lightingDebugPanel;
+        document.body.removeAttribute('data-lighting-debug');
         setTimeout(() => {
             panel.remove();
+            if (lightingDebugStyle) {
+                lightingDebugStyle.remove();
+                lightingDebugStyle = null;
+            }
         }, 160);
         lightingDebugPanel = null;
-    }
-    if (lightingDebugStyle) {
+    } else if (lightingDebugStyle) {
         lightingDebugStyle.remove();
         lightingDebugStyle = null;
     }
