@@ -17,7 +17,7 @@ let floatingTime = 0; // Time accumulator for floating animation
 const baseRotationSpeed = 0.5; // radians per second (base speed)
 const SPIN_IMPULSE_DURATION = 0.5; // seconds
 const SPIN_IMPULSE_ROTATION = Math.PI; // 180 degrees
-const JUMP_IMPULSE_DURATION = 0.5; // seconds
+const JUMP_IMPULSE_DURATION = 0.25; // seconds
 const JUMP_IMPULSE_HEIGHT = 0.22; // units
 
 // Define display order: hearty meals first, desserts last
