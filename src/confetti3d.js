@@ -91,7 +91,7 @@ export function spawnConfettiBurst() {
             sprite.material.needsUpdate = true;
         }
         randomColor(sprite.material.color);
-        sprite.material.opacity = 0.95;
+        sprite.material.opacity = 1.0;
         sprite.material.rotation = THREE.MathUtils.randFloatSpread(Math.PI);
 
         const height = THREE.MathUtils.randFloat(0.02, 0.035);
@@ -104,7 +104,7 @@ export function spawnConfettiBurst() {
 
         sprite.position.set(
             THREE.MathUtils.randFloatSpread(1.4),
-            -0.45 + Math.random() * 0.12,
+            -0.6 + Math.random() * 0.12,
             -0.35 + Math.random() * 0.15
         );
 
