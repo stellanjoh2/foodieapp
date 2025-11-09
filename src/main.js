@@ -619,6 +619,13 @@ function setupLightingDebugPanel() {
             font-family: 'DynaPuff', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             color: #533822;
             z-index: 9999;
+            opacity: 0;
+            transform: translateY(12px);
+            transition: opacity 160ms ease, transform 160ms ease;
+        }
+        .lighting-debug-panel.is-visible {
+            opacity: 1;
+            transform: translateY(0);
         }
         .lighting-debug-header {
             display: flex;
@@ -684,6 +691,9 @@ function setupLightingDebugPanel() {
             align-items: center;
             gap: 0.55rem;
         }
+        .lighting-debug-field-controls.is-color {
+            grid-template-columns: auto minmax(0,1fr) auto;
+        }
         .lighting-debug-field input[type="range"] {
             flex: 1 1 auto;
             accent-color: #f0573a;
@@ -738,11 +748,11 @@ function setupLightingDebugPanel() {
             border-color: #d74b4b;
             box-shadow: 0 0 0 2px rgba(215,75,75,0.2);
         }
-        .lighting-debug-field input[type="color"] {
-            flex: 0 0 44px;
+        .lighting-debug-color {
+            width: 46px;
             height: 28px;
-            border: 1px solid rgba(0,0,0,0.1);
-            border-radius: 8px;
+            border: 1px solid rgba(0,0,0,0.12);
+            border-radius: 12px;
             background: transparent;
             cursor: pointer;
         }
@@ -772,6 +782,9 @@ function setupLightingDebugPanel() {
     document.body.appendChild(panel);
     lightingDebugPanel = panel;
     lightingDebugStyle = style;
+    requestAnimationFrame(() => {
+        panel.classList.add('is-visible');
+    });
 
     const body = panel.querySelector('.lighting-debug-body');
 
@@ -900,7 +913,13 @@ function setupLightingDebugPanel() {
         field.appendChild(labelEl);
 
         const controls = document.createElement('div');
-        controls.className = 'lighting-debug-field-controls';
+        controls.className = 'lighting-debug-field-controls is-color';
+
+        const colorInput = document.createElement('input');
+        colorInput.type = 'color';
+        colorInput.className = 'lighting-debug-color';
+        colorInput.value = value;
+        colorInput.disabled = disabled;
 
         const hexInput = document.createElement('input');
         hexInput.type = 'text';
@@ -909,11 +928,6 @@ function setupLightingDebugPanel() {
         hexInput.maxLength = 7;
         hexInput.placeholder = '#FFFFFF';
         hexInput.disabled = disabled;
-
-        const colorInput = document.createElement('input');
-        colorInput.type = 'color';
-        colorInput.value = value;
-        colorInput.disabled = disabled;
 
         const reset = document.createElement('button');
         reset.type = 'button';
@@ -962,7 +976,7 @@ function setupLightingDebugPanel() {
         }
 
         setResetState(reset, { dirty: false });
-        controls.append(hexInput, colorInput, reset);
+        controls.append(colorInput, hexInput, reset);
         field.appendChild(controls);
         return field;
     };
@@ -1104,8 +1118,12 @@ function setupLightingDebugPanel() {
     }
     body.appendChild(bloomGroup);
 
-    const copyButton = panel.querySelector('[data-action="copy-settings"]');
-    copyButton.addEventListener('click', async () => {
+    const copyButtonHeader = panel.querySelector('[data-action="copy-settings"]');
+    const copyButton = document.createElement('button');
+    copyButton.type = 'button';
+    copyButton.className = 'lighting-debug-copy';
+    copyButton.textContent = 'Copy Settings';
+    const handleCopy = async (button) => {
         const payload = {
             lights: lights.map(({ id, label, light }) => ({
                 id,
@@ -1130,12 +1148,12 @@ function setupLightingDebugPanel() {
         try {
             if (navigator.clipboard?.writeText) {
                 await navigator.clipboard.writeText(text);
-                copyButton.classList.add('is-success');
-                const originalLabel = copyButton.textContent;
-                copyButton.textContent = 'Copied!';
+                button.classList.add('is-success');
+                const originalLabel = button.textContent;
+                button.textContent = 'Copied!';
                 setTimeout(() => {
-                    copyButton.classList.remove('is-success');
-                    copyButton.textContent = originalLabel;
+                    button.classList.remove('is-success');
+                    button.textContent = originalLabel;
                 }, 1600);
             } else {
                 throw new Error('Clipboard API not available');
@@ -1144,20 +1162,31 @@ function setupLightingDebugPanel() {
             console.warn('Copy failed, logging settings to console instead.', error);
             console.log('Lighting Settings\n', text);
         }
-    });
+    };
+    copyButtonHeader.addEventListener('click', () => handleCopy(copyButtonHeader));
+    copyButton.addEventListener('click', () => handleCopy(copyButton));
+
+    body.appendChild(copyButton);
 
     const closeButton = panel.querySelector('.lighting-debug-close');
     closeButton.addEventListener('click', () => {
-        panel.remove();
-        style.remove();
-        lightingDebugPanel = null;
-        lightingDebugStyle = null;
+        panel.classList.remove('is-visible');
+        setTimeout(() => {
+            panel.remove();
+            style.remove();
+            lightingDebugPanel = null;
+            lightingDebugStyle = null;
+        }, 160);
     });
 }
 
 function teardownLightingDebugPanel() {
     if (lightingDebugPanel) {
-        lightingDebugPanel.remove();
+        lightingDebugPanel.classList.remove('is-visible');
+        const panel = lightingDebugPanel;
+        setTimeout(() => {
+            panel.remove();
+        }, 160);
         lightingDebugPanel = null;
     }
     if (lightingDebugStyle) {
