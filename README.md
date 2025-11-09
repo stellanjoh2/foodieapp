@@ -85,8 +85,8 @@ On load, the application will:
 
 ## Other Projects
 
-- **Gridzone** – A retro-inspired arena puzzler where you chain tactical moves across an isometric grid. Under the candy visuals sits a lightweight ECS-style core that keeps combos, power-ups, and enemy AI running at 60 fps.
-- **Foodieapp** – This immersive Three.js menu highlights dishes with HDR lighting, bloom-tuned specular highlights, and haptic-friendly controls across desktop, mobile, and gamepad.
-- **Carholo** – A WebXR concept that drops holographic car models into your space. Gestures, baked ambient occlusion, and adaptive assets keep the AR experience smooth on mid-range hardware.
+- **[Gridzone](https://gridzone.online/)** – A retro-inspired arena puzzler where you chain tactical moves across an isometric grid. Under the candy visuals sits a lightweight ECS-style core that keeps combos, power-ups, and enemy AI running at 60 fps.
+- **[Foodieapp](https://stellanjohansson.github.io/foodieapp/)** – This immersive Three.js menu highlights dishes with HDR lighting, bloom-tuned specular highlights, and haptic-friendly controls across desktop, mobile, and gamepad.
+- **[Carholo](https://stellanjohansson.github.io/carholo/)** – A WebXR concept that drops holographic car models into your space. Gestures, baked ambient occlusion, and adaptive assets keep the AR experience smooth on mid-range hardware.
 
 
