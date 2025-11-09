@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { initScene, startRenderLoop, getRenderer, getTopSpotlight } from './scene.js';
+import { initScene, startRenderLoop, getRenderer, getTopSpotlight, setEnvironmentReflectionIntensity, getLightingRegistry, getEnvironmentReflectionIntensity } from './scene.js';
 import { initModelLoader, loadModel } from './models.js';
 import { initControls } from './controls.js';
 import { initSelector, selectPrevious, selectNext, updateSelector, getSelectedItem, getSelectedIndex, getItemCount, addSpinImpulse } from './selector.js';
@@ -73,6 +73,7 @@ async function init() {
         setupMusicToggle();
         document.addEventListener('overlay:quantity-change', handleQuantityChangeSound);
     initShopkeeper();
+    setupLightingDebugPanel();
 
     try {
         // Initialize scene
@@ -548,5 +549,175 @@ function updateWalletDisplay() {
         indicator.classList.toggle('is-empty', state.wallet.balance <= 0);
         indicator.classList.toggle('is-low', state.wallet.balance > 0 && state.wallet.balance < 100);
     }
+}
+
+function setupLightingDebugPanel() {
+    const lights = getLightingRegistry();
+    if (!lights.length) return;
+
+    const panel = document.createElement('div');
+    panel.className = 'lighting-debug-panel';
+    panel.innerHTML = `
+        <header class="lighting-debug-header">
+            <span>Lighting Debug</span>
+            <button type="button" class="lighting-debug-close" aria-label="Hide lighting debug">×</button>
+        </header>
+        <div class="lighting-debug-body"></div>
+    `;
+
+    const style = document.createElement('style');
+    style.textContent = `
+        .lighting-debug-panel {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 1.5rem;
+            background: rgba(255, 255, 255, 0.94);
+            border-radius: 16px;
+            box-shadow: 0 18px 40px rgba(0,0,0,0.18);
+            width: 320px;
+            max-height: calc(100vh - 3rem);
+            overflow: hidden auto;
+            font-family: 'DynaPuff', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #533822;
+            z-index: 9999;
+        }
+        .lighting-debug-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.8rem 1rem;
+            background: rgba(240, 87, 58, 0.18);
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+            font-weight: 600;
+        }
+        .lighting-debug-header button {
+            border: none;
+            background: transparent;
+            color: inherit;
+            font-size: 1.4rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .lighting-debug-body {
+            padding: 0.8rem 1rem 1rem;
+            display: grid;
+            gap: 1rem;
+        }
+        .lighting-debug-group {
+            background: rgba(255,255,255,0.9);
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: 12px;
+            padding: 0.75rem;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+        }
+        .lighting-debug-group h3 {
+            margin: 0 0 0.6rem;
+            font-size: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+        }
+        .lighting-debug-field {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 0.9rem;
+            margin-bottom: 0.4rem;
+        }
+        .lighting-debug-field:last-child {
+            margin-bottom: 0;
+        }
+        .lighting-debug-field label {
+            flex: 0 0 80px;
+            font-weight: 500;
+        }
+        .lighting-debug-field input[type="range"] {
+            flex: 1;
+            accent-color: #f0573a;
+        }
+        .lighting-debug-field input[type="color"] {
+            flex: 0 0 44px;
+            height: 28px;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 8px;
+            background: transparent;
+            cursor: pointer;
+        }
+        .lighting-debug-value {
+            font-variant-numeric: tabular-nums;
+            min-width: 3.6ch;
+            text-align: right;
+        }
+    `;
+    document.head.appendChild(style);
+    document.body.appendChild(panel);
+
+    const body = panel.querySelector('.lighting-debug-body');
+
+    const createGroup = (descriptor) => {
+        const { light, label, type } = descriptor;
+        const group = document.createElement('div');
+        group.className = 'lighting-debug-group';
+        const groupId = `light-${descriptor.id}`;
+        group.innerHTML = `
+            <h3>${label}<span>${type}</span></h3>
+            <div class="lighting-debug-field">
+                <label for="${groupId}-intensity">Intensity</label>
+                <input id="${groupId}-intensity" type="range" min="0" max="5" step="0.01" value="${light.intensity.toFixed(2)}">
+                <span class="lighting-debug-value" data-value>${light.intensity.toFixed(2)}</span>
+            </div>
+            <div class="lighting-debug-field">
+                <label for="${groupId}-color">Color</label>
+                <input id="${groupId}-color" type="color" value="#${light.color.getHexString()}">
+            </div>
+        `;
+
+        const intensityInput = group.querySelector(`#${groupId}-intensity`);
+        const intensityValue = group.querySelector('[data-value]');
+        intensityInput.addEventListener('input', () => {
+            const value = Number(intensityInput.value);
+            light.intensity = value;
+            if (light.decay !== undefined && type === 'PointLight') {
+                light.decay = 1.4;
+            }
+            intensityValue.textContent = value.toFixed(2);
+        });
+
+        const colorInput = group.querySelector(`#${groupId}-color`);
+        colorInput.addEventListener('input', () => {
+            light.color.set(colorInput.value);
+        });
+
+        body.appendChild(group);
+    };
+
+    lights.forEach(createGroup);
+
+    const envGroup = document.createElement('div');
+    envGroup.className = 'lighting-debug-group';
+    const currentEnv = getEnvironmentReflectionIntensity();
+    envGroup.innerHTML = `
+        <h3>Environment<span>Reflection</span></h3>
+        <div class="lighting-debug-field">
+            <label for="env-intensity">Intensity</label>
+            <input id="env-intensity" type="range" min="0" max="4" step="0.05" value="${currentEnv.toFixed(2)}">
+            <span class="lighting-debug-value" data-value>${currentEnv.toFixed(2)}</span>
+        </div>
+    `;
+    const envSlider = envGroup.querySelector('#env-intensity');
+    const envValue = envGroup.querySelector('[data-value]');
+    envSlider.addEventListener('input', () => {
+        const value = Number(envSlider.value);
+        envValue.textContent = value.toFixed(2);
+        setEnvironmentReflectionIntensity(value);
+    });
+    body.appendChild(envGroup);
+
+    const closeButton = panel.querySelector('.lighting-debug-close');
+    closeButton.addEventListener('click', () => {
+        panel.remove();
+        style.remove();
+    });
 }
 

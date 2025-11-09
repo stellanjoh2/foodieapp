@@ -13,6 +13,7 @@ let topSpotLight = null;
 let environmentMap = null;
 const DEFAULT_ENV_INTENSITY = 2.0;
 let environmentIntensity = DEFAULT_ENV_INTENSITY;
+const lightingRegistry = [];
 
 /**
  * Initialize Three.js scene
@@ -114,6 +115,12 @@ function setupLighting() {
     // Brightened by 20%: 0.6 * 1.2 = 0.72
     const ambientLight = new THREE.AmbientLight(0xfefaf0, 0.95832); // +10%
     scene.add(ambientLight);
+    registerLightControl({
+        id: 'ambient',
+        label: 'Ambient',
+        light: ambientLight,
+        type: 'AmbientLight'
+    });
 
     // Main directional light - desaturated warm tone (75% less saturation)
     // Positioned from above/behind to simulate sunset lighting
@@ -130,6 +137,12 @@ function setupLighting() {
     directionalLight.shadow.camera.top = 10;
     directionalLight.shadow.camera.bottom = -10;
     scene.add(directionalLight);
+    registerLightControl({
+        id: 'key',
+        label: 'Key Directional',
+        light: directionalLight,
+        type: 'DirectionalLight'
+    });
 
     topSpotLight = new THREE.SpotLight(0xfff3d6, 2.2, 14, Math.PI / 6, 0.35, 1);
     topSpotLight.position.set(0, 6, 0);
@@ -142,18 +155,36 @@ function setupLighting() {
     topSpotLight.shadow.camera.far = 25;
     scene.add(topSpotLight);
     scene.add(topSpotLight.target);
+    registerLightControl({
+        id: 'spot',
+        label: 'Top Spotlight',
+        light: topSpotLight,
+        type: 'SpotLight'
+    });
 
     // Fill light - desaturated warm tone from the front
     // Brightened by 20%: 0.4 * 1.2 = 0.48
     const fillLight = new THREE.DirectionalLight(0xfef8f0, 0.63888); // +10%
     fillLight.position.set(-3, 2, 3); // From front-left
     scene.add(fillLight);
+    registerLightControl({
+        id: 'fill',
+        label: 'Fill Directional',
+        light: fillLight,
+        type: 'DirectionalLight'
+    });
     
     // Rim light - desaturated warm tone from behind
     // Brightened by 20%: 0.3 * 1.2 = 0.36
     const rimLight = new THREE.DirectionalLight(0xfef5f0, 0.47916); // +10%
     rimLight.position.set(-2, 4, -5); // From behind
     scene.add(rimLight);
+    registerLightControl({
+        id: 'rim',
+        label: 'Rim Directional',
+        light: rimLight,
+        type: 'DirectionalLight'
+    });
     
     // Studio point lights - left and right sides for studio-like lighting
     // Positioned closer to food items at the same level (Y=0) for even side illumination
@@ -163,12 +194,24 @@ function setupLighting() {
     const leftPointLight = new THREE.PointLight(0xe73827, 3.993, 50); // +10%
     leftPointLight.position.set(-4, 0, 0); // Left side, closer to food items, same level
     scene.add(leftPointLight);
+    registerLightControl({
+        id: 'pointLeft',
+        label: 'Left Point',
+        light: leftPointLight,
+        type: 'PointLight'
+    });
     
     // Right side point light - strong orange-yellow from bottom of gradient
     // Brightened by 20%: 2.5 * 1.2 = 3.0
     const rightPointLight = new THREE.PointLight(0xf8aa3b, 3.993, 50); // +10%
     rightPointLight.position.set(4, 0, 0); // Right side, closer to food items, same level
     scene.add(rightPointLight);
+    registerLightControl({
+        id: 'pointRight',
+        label: 'Right Point',
+        light: rightPointLight,
+        type: 'PointLight'
+    });
 }
 
 function applyEnvironmentMap() {
@@ -221,6 +264,18 @@ function setSceneEnvironmentIntensity(intensity) {
 export function setEnvironmentReflectionIntensity(intensity = DEFAULT_ENV_INTENSITY) {
     environmentIntensity = intensity;
     setSceneEnvironmentIntensity(environmentIntensity);
+}
+
+export function getEnvironmentReflectionIntensity() {
+    return environmentIntensity;
+}
+
+export function getLightingRegistry() {
+    return lightingRegistry;
+}
+
+function registerLightControl(entry) {
+    lightingRegistry.push(entry);
 }
 
 export function getTopSpotlight() {
