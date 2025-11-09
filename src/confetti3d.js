@@ -94,16 +94,17 @@ export function spawnConfettiBurst() {
         sprite.material.opacity = 0.95;
         sprite.material.rotation = THREE.MathUtils.randFloatSpread(Math.PI);
 
-        const size = THREE.MathUtils.randFloat(0.024, 0.044); // 80% smaller than before
+        const height = THREE.MathUtils.randFloat(0.02, 0.035);
+        const width = height * (16 / 9);
         sprite.scale.set(
-            size * THREE.MathUtils.randFloat(2.4, 3.4),  // wider strips
-            size * THREE.MathUtils.randFloat(0.5, 0.8),
+            width,
+            height,
             1
         );
 
         sprite.position.set(
             THREE.MathUtils.randFloatSpread(1.4),
-            -0.25 + Math.random() * 0.15,
+            -0.45 + Math.random() * 0.12,
             -0.35 + Math.random() * 0.15
         );
 
