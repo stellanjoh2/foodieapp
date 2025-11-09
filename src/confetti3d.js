@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 const GRAVITY = new THREE.Vector3(0, -6.2, 0);
 const BASE_SPEED = 3.4;
-const PARTICLE_TTL = 1.6;
+const PARTICLE_TTL = 0.8;
 const BURST_COUNT = 140;
 
 let group = null;
@@ -94,8 +94,12 @@ export function spawnConfettiBurst() {
         sprite.material.opacity = 0.95;
         sprite.material.rotation = THREE.MathUtils.randFloatSpread(Math.PI);
 
-        sprite.scale.setScalar(THREE.MathUtils.randFloat(0.12, 0.22));
-        sprite.scale.y *= THREE.MathUtils.randFloat(1.0, 1.6);
+        const size = THREE.MathUtils.randFloat(0.024, 0.044); // 80% smaller than before
+        sprite.scale.set(
+            size * THREE.MathUtils.randFloat(2.4, 3.4),  // wider strips
+            size * THREE.MathUtils.randFloat(0.5, 0.8),
+            1
+        );
 
         sprite.position.set(
             THREE.MathUtils.randFloatSpread(1.4),
