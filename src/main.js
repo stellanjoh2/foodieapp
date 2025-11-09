@@ -189,7 +189,7 @@ function createBackgroundAudio() {
         return null;
     }
 
-    const audio = new Audio('Music/food-store.mp3');
+    const audio = new Audio('Music/pet-store.mp3');
     audio.loop = true;
     audio.preload = 'auto';
     audio.crossOrigin = 'anonymous';
