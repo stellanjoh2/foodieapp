@@ -2,10 +2,6 @@ import * as THREE from 'three';
 
 const GRAVITY = new THREE.Vector3(0, -6.2, 0);
 const BASE_SPEED = 3.4;
-const LAUNCH_VERTICAL_MULTIPLIER = 1.25;
-const LAUNCH_HORIZONTAL_MULTIPLIER = 1.15;
-const AIR_DRAG_VERTICAL = 2.3;
-const AIR_DRAG_HORIZONTAL = 1.6;
 const PARTICLE_TTL = 0.8;
 const BURST_COUNT = 140;
 
@@ -113,9 +109,9 @@ export function spawnConfettiBurst() {
         );
 
         sprite.userData.velocity = new THREE.Vector3(
-            THREE.MathUtils.randFloatSpread(2.4) * LAUNCH_HORIZONTAL_MULTIPLIER,
-            (BASE_SPEED + Math.random() * 2.5) * LAUNCH_VERTICAL_MULTIPLIER,
-            THREE.MathUtils.randFloatSpread(0.6) * LAUNCH_HORIZONTAL_MULTIPLIER
+            THREE.MathUtils.randFloatSpread(2.4),
+            BASE_SPEED + Math.random() * 2.5,
+            THREE.MathUtils.randFloatSpread(0.6)
         );
         sprite.userData.angularVelocity = THREE.MathUtils.randFloatSpread(8);
         sprite.userData.life = 0;
@@ -139,16 +135,8 @@ export function updateConfetti3D(delta) {
             return;
         }
 
-        const velocity = sprite.userData.velocity;
-        velocity.addScaledVector(GRAVITY, delta);
-
-        const horizontalDrag = Math.exp(-AIR_DRAG_HORIZONTAL * delta);
-        const verticalDrag = Math.exp(-AIR_DRAG_VERTICAL * delta);
-        velocity.x *= horizontalDrag;
-        velocity.z *= horizontalDrag;
-        velocity.y *= verticalDrag;
-
-        tempVec.copy(velocity).multiplyScalar(delta);
+        sprite.userData.velocity.addScaledVector(GRAVITY, delta);
+        tempVec.copy(sprite.userData.velocity).multiplyScalar(delta);
         sprite.position.add(tempVec);
 
         sprite.material.rotation += sprite.userData.angularVelocity * delta;
