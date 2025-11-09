@@ -36,6 +36,8 @@ const spotlightDesiredPosition = new THREE.Vector3();
 let musicToggleButton = null;
 const sfxCache = new Map();
 const sfxLoads = new Map();
+let lightingDebugPanel = null;
+let lightingDebugStyle = null;
 const SFX_CONFIG = {
     swipe: { path: 'Sounds/coin-4.wav', volume: 0.6 },
     cancel: { path: 'Sounds/cancel-1.wav', volume: 0.55 },
@@ -555,11 +557,20 @@ function setupLightingDebugPanel() {
     const lights = getLightingRegistry();
     if (!lights.length) return;
 
+    if (lightingDebugPanel) {
+        lightingDebugPanel.remove();
+        lightingDebugPanel = null;
+    }
+    if (lightingDebugStyle) {
+        lightingDebugStyle.remove();
+        lightingDebugStyle = null;
+    }
+
     const panel = document.createElement('div');
     panel.className = 'lighting-debug-panel';
     panel.innerHTML = `
         <header class="lighting-debug-header">
-            <span>Lighting Debug</span>
+            <span>Lighting Debug v2</span>
             <button type="button" class="lighting-debug-close" aria-label="Hide lighting debug">×</button>
         </header>
         <div class="lighting-debug-body"></div>
@@ -652,6 +663,8 @@ function setupLightingDebugPanel() {
     `;
     document.head.appendChild(style);
     document.body.appendChild(panel);
+    lightingDebugPanel = panel;
+    lightingDebugStyle = style;
 
     const body = panel.querySelector('.lighting-debug-body');
 
@@ -776,6 +789,8 @@ function setupLightingDebugPanel() {
     closeButton.addEventListener('click', () => {
         panel.remove();
         style.remove();
+        lightingDebugPanel = null;
+        lightingDebugStyle = null;
     });
 }
 
