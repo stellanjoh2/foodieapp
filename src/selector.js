@@ -14,6 +14,12 @@ let itemSpacing = 1.90; // Distance between items horizontally (25% more spacing
 let itemScale = 1;
 let floatingTime = 0; // Time accumulator for floating animation
 
+const baseRotationSpeed = 0.5; // radians per second (base speed)
+const SPIN_IMPULSE_DURATION = 0.5; // seconds
+const SPIN_IMPULSE_ROTATION = Math.PI; // 180 degrees
+const JUMP_IMPULSE_DURATION = 0.5; // seconds
+const JUMP_IMPULSE_HEIGHT = 0.22; // units
+
 // Define display order: hearty meals first, desserts last
 const itemOrder = [
     'burger',
@@ -347,17 +353,25 @@ export function updateSelector(deltaTime = 0.016) {
         // Only scale affects the item
         if (mesh.userData.originalPosition) {
             const origPos = mesh.userData.originalPosition;
-            
-            // Add gentle floating/swaying animation (up and down)
-            // Each item has a slight phase offset based on index for natural variation
-            const phaseOffset = index * 0.5; // Offset each item slightly for natural variation
-            const floatSpeed = mesh.userData.isSelected ? 1.5 : 1.2; // selected items 25% faster
-            const floatAmplitude = 0.06875; // +25% taller sway from previous
-            
-            // Gentle sine wave for smooth floating motion
+            const phaseOffset = index * 0.5;
+            const floatSpeed = mesh.userData.isSelected ? 1.5 : 1.2;
+            const floatAmplitude = 0.06875;
             const floatingOffset = Math.sin(floatingTime * floatSpeed + phaseOffset) * floatAmplitude;
-            
-            mesh.position.set(origPos.x, origPos.y + floatingOffset, origPos.z);
+
+            let jumpOffset = 0;
+            if (mesh.userData.jumpImpulses && mesh.userData.jumpImpulses.length) {
+                let totalJump = 0;
+                mesh.userData.jumpImpulses = mesh.userData.jumpImpulses.filter((impulse) => {
+                    impulse.elapsed += clampedDelta;
+                    const progress = Math.min(1, impulse.elapsed / JUMP_IMPULSE_DURATION);
+                    const offset = Math.sin(progress * Math.PI) * JUMP_IMPULSE_HEIGHT;
+                    totalJump += offset;
+                    return progress < 1;
+                });
+                jumpOffset = totalJump;
+            }
+
+            mesh.position.set(origPos.x, origPos.y + floatingOffset + jumpOffset, origPos.z);
         }
         
         // Ensure rotation X and Z stay fixed (only Y or Z rotates for spinning)
@@ -371,10 +385,6 @@ export function updateSelector(deltaTime = 0.016) {
     
     // Make items spin around their own axis
     // Use frame-rate independent rotation with variable speed based on selection
-const baseRotationSpeed = 0.5; // radians per second (base speed)
-const SPIN_IMPULSE_DURATION = 1.0; // seconds
-const SPIN_IMPULSE_ROTATION = Math.PI * 2; // one full turn
-    
     items.forEach((item) => {
         const mesh = item.mesh;
         
@@ -414,6 +424,7 @@ const SPIN_IMPULSE_ROTATION = Math.PI * 2; // one full turn
                 return nextProgress < 1;
             });
         }
+
     });
 }
 
@@ -428,6 +439,10 @@ export function addSpinImpulse(mesh) {
         mesh.userData.spinImpulses = [];
     }
     mesh.userData.spinImpulses.push({ elapsed: 0, angle: 0 });
+    if (!mesh.userData.jumpImpulses) {
+        mesh.userData.jumpImpulses = [];
+    }
+    mesh.userData.jumpImpulses.push({ elapsed: 0 });
 }
 
 /**
