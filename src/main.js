@@ -570,7 +570,7 @@ function setupLightingDebugPanel() {
     panel.className = 'lighting-debug-panel';
     panel.innerHTML = `
         <header class="lighting-debug-header">
-            <span>Lighting Debug v2</span>
+            <span>Lighting Debug</span>
             <button type="button" class="lighting-debug-close" aria-label="Hide lighting debug">×</button>
         </header>
         <div class="lighting-debug-body"></div>
@@ -642,7 +642,8 @@ function setupLightingDebugPanel() {
             font-weight: 500;
         }
         .lighting-debug-field-controls {
-            display: flex;
+            display: grid;
+            grid-template-columns: minmax(0,1fr) auto auto;
             align-items: center;
             gap: 0.55rem;
         }
@@ -780,7 +781,7 @@ function setupLightingDebugPanel() {
         reset.type = 'button';
         reset.className = 'lighting-debug-reset';
         reset.title = 'Reset to original value';
-        reset.innerText = '↺';
+        reset.innerText = '×';
         reset.disabled = disabled;
 
         const originalValue = original ?? value;
