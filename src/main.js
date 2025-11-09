@@ -73,11 +73,11 @@ async function init() {
         setupMusicToggle();
         document.addEventListener('overlay:quantity-change', handleQuantityChangeSound);
     initShopkeeper();
-    setupLightingDebugPanel();
 
     try {
         // Initialize scene
         const { scene, camera } = initScene(container);
+        setupLightingDebugPanel();
         initConfetti3D(scene);
 
         // Initialize model loader
