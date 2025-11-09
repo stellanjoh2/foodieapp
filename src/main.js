@@ -79,7 +79,6 @@ async function init() {
     try {
         // Initialize scene
         const { scene, camera } = initScene(container);
-        setupLightingDebugPanel();
         initConfetti3D(scene);
 
         // Initialize model loader
@@ -116,6 +115,7 @@ async function init() {
         const performanceTier = getPerformanceTier();
         const postProcessingConfig = getPostProcessingConfig(performanceTier);
         const composer = initPostProcessing(renderer, scene, camera, postProcessingConfig);
+        setupLightingDebugPanel();
         updateLoadingProgress(0.98);
 
         // Populate overlay with initial selection
