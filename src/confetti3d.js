@@ -104,7 +104,7 @@ export function spawnConfettiBurst() {
 
         sprite.position.set(
             THREE.MathUtils.randFloatSpread(1.4),
-            -1.05 + Math.random() * 0.08,
+            -1.3 + Math.random() * 0.06,
             -0.35 + Math.random() * 0.15
         );
 
