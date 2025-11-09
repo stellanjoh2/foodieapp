@@ -197,3 +197,26 @@ export function isBloomEnabled() {
     return bloomEnabled && !!bloomPass;
 }
 
+export function getBloomDebugSettings() {
+    if (!bloomPass) return null;
+    return {
+        enabled: bloomEnabled,
+        strength: bloomPass.strength,
+        radius: bloomPass.radius,
+        threshold: bloomPass.threshold
+    };
+}
+
+export function setBloomDebugSettings(settings = {}) {
+    if (!bloomPass) return;
+    if (typeof settings.strength === 'number') {
+        bloomPass.strength = settings.strength;
+    }
+    if (typeof settings.radius === 'number') {
+        bloomPass.radius = settings.radius;
+    }
+    if (typeof settings.threshold === 'number') {
+        bloomPass.threshold = settings.threshold;
+    }
+}
+

@@ -119,7 +119,8 @@ function setupLighting() {
         id: 'ambient',
         label: 'Ambient',
         light: ambientLight,
-        type: 'AmbientLight'
+        type: 'AmbientLight',
+        intensityRange: [0, 2]
     });
 
     // Main directional light - desaturated warm tone (75% less saturation)
@@ -141,13 +142,14 @@ function setupLighting() {
         id: 'key',
         label: 'Key Directional',
         light: directionalLight,
-        type: 'DirectionalLight'
+        type: 'DirectionalLight',
+        intensityRange: [0, 4]
     });
 
     topSpotLight = new THREE.SpotLight(0xfff3d6, 2.2, 14, Math.PI / 6, 0.35, 1);
     topSpotLight.position.set(0, 6, 0);
     topSpotLight.target.position.set(0, 0, 0);
-    topSpotLight.visible = false;
+    topSpotLight.visible = topSpotLight.intensity > 0.01;
     topSpotLight.castShadow = false;
     topSpotLight.shadow.mapSize.width = 4096;
     topSpotLight.shadow.mapSize.height = 4096;
@@ -159,7 +161,9 @@ function setupLighting() {
         id: 'spot',
         label: 'Top Spotlight',
         light: topSpotLight,
-        type: 'SpotLight'
+        type: 'SpotLight',
+        intensityRange: [0, 6],
+        intensityStep: 0.01
     });
 
     // Fill light - desaturated warm tone from the front
@@ -171,7 +175,8 @@ function setupLighting() {
         id: 'fill',
         label: 'Fill Directional',
         light: fillLight,
-        type: 'DirectionalLight'
+        type: 'DirectionalLight',
+        intensityRange: [0, 2]
     });
     
     // Rim light - desaturated warm tone from behind
@@ -183,7 +188,8 @@ function setupLighting() {
         id: 'rim',
         label: 'Rim Directional',
         light: rimLight,
-        type: 'DirectionalLight'
+        type: 'DirectionalLight',
+        intensityRange: [0, 2]
     });
     
     // Studio point lights - left and right sides for studio-like lighting
@@ -198,7 +204,9 @@ function setupLighting() {
         id: 'pointLeft',
         label: 'Left Point',
         light: leftPointLight,
-        type: 'PointLight'
+        type: 'PointLight',
+        intensityRange: [0, 8],
+        intensityStep: 0.01
     });
     
     // Right side point light - strong orange-yellow from bottom of gradient
@@ -210,7 +218,9 @@ function setupLighting() {
         id: 'pointRight',
         label: 'Right Point',
         light: rightPointLight,
-        type: 'PointLight'
+        type: 'PointLight',
+        intensityRange: [0, 8],
+        intensityStep: 0.01
     });
 }
 
@@ -275,7 +285,11 @@ export function getLightingRegistry() {
 }
 
 function registerLightControl(entry) {
-    lightingRegistry.push(entry);
+    lightingRegistry.push({
+        intensityRange: [0, 5],
+        intensityStep: 0.01,
+        ...entry
+    });
 }
 
 export function getTopSpotlight() {

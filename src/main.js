@@ -8,7 +8,7 @@ import { initScene, startRenderLoop, getRenderer, getTopSpotlight, setEnvironmen
 import { initModelLoader, loadModel } from './models.js';
 import { initControls } from './controls.js';
 import { initSelector, selectPrevious, selectNext, updateSelector, getSelectedItem, getSelectedIndex, getItemCount, addSpinImpulse } from './selector.js';
-import { initPostProcessing, render as renderPostProcessing, setBloomEnabled, isBloomEnabled } from './postprocessing.js';
+import { initPostProcessing, render as renderPostProcessing, setBloomEnabled, isBloomEnabled, getBloomDebugSettings, setBloomDebugSettings } from './postprocessing.js';
 import { initOverlay, animateOverlaySelectionChange, updateOverlayContent, adjustQuantity } from './ui/overlay.js';
 import { initShopkeeper } from './ui/shopkeeper.js';
 import { getFoodDetailsByName } from './data/foodDetails.js';
@@ -660,11 +660,14 @@ function setupLightingDebugPanel() {
         const group = document.createElement('div');
         group.className = 'lighting-debug-group';
         const groupId = `light-${descriptor.id}`;
+        const minIntensity = Array.isArray(descriptor.intensityRange) ? descriptor.intensityRange[0] : (descriptor.minIntensity ?? 0);
+        const maxIntensity = Array.isArray(descriptor.intensityRange) ? descriptor.intensityRange[1] : (descriptor.maxIntensity ?? 5);
+        const intensityStep = descriptor.intensityStep ?? 0.01;
         group.innerHTML = `
             <h3>${label}<span>${type}</span></h3>
             <div class="lighting-debug-field">
                 <label for="${groupId}-intensity">Intensity</label>
-                <input id="${groupId}-intensity" type="range" min="0" max="5" step="0.01" value="${light.intensity.toFixed(2)}">
+                <input id="${groupId}-intensity" type="range" min="${minIntensity}" max="${maxIntensity}" step="${intensityStep}" value="${light.intensity.toFixed(2)}">
                 <span class="lighting-debug-value" data-value>${light.intensity.toFixed(2)}</span>
             </div>
             <div class="lighting-debug-field">
@@ -678,11 +681,17 @@ function setupLightingDebugPanel() {
         intensityInput.addEventListener('input', () => {
             const value = Number(intensityInput.value);
             light.intensity = value;
+            if (type === 'SpotLight') {
+                light.visible = value > 0.01;
+            }
             if (light.decay !== undefined && type === 'PointLight') {
-                light.decay = 1.4;
+                light.decay = 2.0;
             }
             intensityValue.textContent = value.toFixed(2);
         });
+        if (type === 'SpotLight') {
+            light.visible = light.intensity > 0.01;
+        }
 
         const colorInput = group.querySelector(`#${groupId}-color`);
         colorInput.addEventListener('input', () => {
@@ -713,6 +722,55 @@ function setupLightingDebugPanel() {
         setEnvironmentReflectionIntensity(value);
     });
     body.appendChild(envGroup);
+
+    const bloom = getBloomDebugSettings();
+    if (bloom) {
+        const bloomGroup = document.createElement('div');
+        bloomGroup.className = 'lighting-debug-group';
+        bloomGroup.innerHTML = `
+            <h3>Bloom<span>Post FX</span></h3>
+            <div class="lighting-debug-field">
+                <label for="bloom-strength">Strength</label>
+                <input id="bloom-strength" type="range" min="0" max="4" step="0.05" value="${bloom.strength.toFixed(2)}">
+                <span class="lighting-debug-value" data-value-strength>${bloom.strength.toFixed(2)}</span>
+            </div>
+            <div class="lighting-debug-field">
+                <label for="bloom-radius">Radius</label>
+                <input id="bloom-radius" type="range" min="0" max="10" step="0.1" value="${bloom.radius.toFixed(1)}">
+                <span class="lighting-debug-value" data-value-radius>${bloom.radius.toFixed(1)}</span>
+            </div>
+            <div class="lighting-debug-field">
+                <label for="bloom-threshold">Threshold</label>
+                <input id="bloom-threshold" type="range" min="0" max="1" step="0.01" value="${bloom.threshold.toFixed(2)}">
+                <span class="lighting-debug-value" data-value-threshold>${bloom.threshold.toFixed(2)}</span>
+            </div>
+        `;
+
+        const strengthInput = bloomGroup.querySelector('#bloom-strength');
+        const radiusInput = bloomGroup.querySelector('#bloom-radius');
+        const thresholdInput = bloomGroup.querySelector('#bloom-threshold');
+        const strengthValue = bloomGroup.querySelector('[data-value-strength]');
+        const radiusValue = bloomGroup.querySelector('[data-value-radius]');
+        const thresholdValue = bloomGroup.querySelector('[data-value-threshold]');
+
+        strengthInput.addEventListener('input', () => {
+            const strength = Number(strengthInput.value);
+            strengthValue.textContent = strength.toFixed(2);
+            setBloomDebugSettings({ strength });
+        });
+        radiusInput.addEventListener('input', () => {
+            const radius = Number(radiusInput.value);
+            radiusValue.textContent = radius.toFixed(1);
+            setBloomDebugSettings({ radius });
+        });
+        thresholdInput.addEventListener('input', () => {
+            const threshold = Number(thresholdInput.value);
+            thresholdValue.textContent = threshold.toFixed(2);
+            setBloomDebugSettings({ threshold });
+        });
+
+        body.appendChild(bloomGroup);
+    }
 
     const closeButton = panel.querySelector('.lighting-debug-close');
     closeButton.addEventListener('click', () => {
