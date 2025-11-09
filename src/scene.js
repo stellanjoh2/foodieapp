@@ -33,10 +33,12 @@ export function initScene(container) {
     const pixelRatio = Math.min(getDevicePixelRatio(), pixelRatioCap);
     renderer = new THREE.WebGLRenderer({ 
         antialias: true,
+        alpha: true,
         powerPreference: performanceTier === 'low' ? 'low-power' : 'high-performance'
     });
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(pixelRatio);
+    renderer.setClearColor(0x000000, 0);
     renderer.shadowMap.enabled = false;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     
