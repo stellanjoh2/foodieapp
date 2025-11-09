@@ -190,6 +190,9 @@ function changeQuantity(action) {
     const valueEl = overlayContent.querySelector('[data-quantity-value]');
     if (valueEl) {
         valueEl.textContent = `${nextQuantity}`;
+        valueEl.classList.remove('quantity-value-burst');
+        void valueEl.offsetWidth; // force reflow
+        valueEl.classList.add('quantity-value-burst');
     }
 
     emitQuantityChange(action, nextQuantity, false);
