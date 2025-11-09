@@ -115,7 +115,7 @@ async function init() {
         const performanceTier = getPerformanceTier();
         const postProcessingConfig = getPostProcessingConfig(performanceTier);
         const composer = initPostProcessing(renderer, scene, camera, postProcessingConfig);
-        setupLightingDebugPanel();
+        setupLightingDebugTrigger();
         updateLoadingProgress(0.98);
 
         // Populate overlay with initial selection
@@ -792,5 +792,35 @@ function setupLightingDebugPanel() {
         lightingDebugPanel = null;
         lightingDebugStyle = null;
     });
+}
+
+function teardownLightingDebugPanel() {
+    if (lightingDebugPanel) {
+        lightingDebugPanel.remove();
+        lightingDebugPanel = null;
+    }
+    if (lightingDebugStyle) {
+        lightingDebugStyle.remove();
+        lightingDebugStyle = null;
+    }
+}
+
+function setupLightingDebugTrigger() {
+    const togglePanel = () => {
+        if (lightingDebugPanel) {
+            teardownLightingDebugPanel();
+        } else {
+            setupLightingDebugPanel();
+        }
+    };
+
+    window.addEventListener('keydown', (event) => {
+        if (event.repeat) return;
+        if (event.key && event.key.toLowerCase() === 'l') {
+            togglePanel();
+        }
+    });
+
+    console.info('ℹ️ Press the "L" key to toggle the lighting debug panel.');
 }
 
