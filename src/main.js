@@ -737,35 +737,40 @@ function setupLightingDebugPanel() {
     body.appendChild(envGroup);
 
     const bloom = getBloomDebugSettings();
-    if (bloom) {
-        const bloomGroup = document.createElement('div');
-        bloomGroup.className = 'lighting-debug-group';
-        bloomGroup.innerHTML = `
-            <h3>Bloom<span>Post FX</span></h3>
-            <div class="lighting-debug-field">
-                <label for="bloom-strength">Strength</label>
-                <input id="bloom-strength" type="range" min="0" max="4" step="0.05" value="${bloom.strength.toFixed(2)}">
-                <span class="lighting-debug-value" data-value-strength>${bloom.strength.toFixed(2)}</span>
-            </div>
-            <div class="lighting-debug-field">
-                <label for="bloom-radius">Radius</label>
-                <input id="bloom-radius" type="range" min="0" max="10" step="0.1" value="${bloom.radius.toFixed(1)}">
-                <span class="lighting-debug-value" data-value-radius>${bloom.radius.toFixed(1)}</span>
-            </div>
-            <div class="lighting-debug-field">
-                <label for="bloom-threshold">Threshold</label>
-                <input id="bloom-threshold" type="range" min="0" max="1" step="0.01" value="${bloom.threshold.toFixed(2)}">
-                <span class="lighting-debug-value" data-value-threshold>${bloom.threshold.toFixed(2)}</span>
-            </div>
-        `;
+    const bloomGroup = document.createElement('div');
+    bloomGroup.className = 'lighting-debug-group';
+    const bloomActive = Boolean(bloom);
+    const bloomStrength = bloom?.strength ?? 0;
+    const bloomRadius = bloom?.radius ?? 0;
+    const bloomThreshold = bloom?.threshold ?? 0.96;
+    bloomGroup.innerHTML = `
+        <h3>Bloom<span>Post FX</span></h3>
+        <div class="lighting-debug-field">
+            <label for="bloom-strength">Strength</label>
+            <input id="bloom-strength" type="range" min="0" max="4" step="0.05" value="${bloomStrength.toFixed(2)}" ${bloomActive ? '' : 'disabled'}>
+            <span class="lighting-debug-value" data-value-strength>${bloomStrength.toFixed(2)}</span>
+        </div>
+        <div class="lighting-debug-field">
+            <label for="bloom-radius">Radius</label>
+            <input id="bloom-radius" type="range" min="0" max="10" step="0.1" value="${bloomRadius.toFixed(1)}" ${bloomActive ? '' : 'disabled'}>
+            <span class="lighting-debug-value" data-value-radius>${bloomRadius.toFixed(1)}</span>
+        </div>
+        <div class="lighting-debug-field">
+            <label for="bloom-threshold">Threshold</label>
+            <input id="bloom-threshold" type="range" min="0" max="1" step="0.01" value="${bloomThreshold.toFixed(2)}" ${bloomActive ? '' : 'disabled'}>
+            <span class="lighting-debug-value" data-value-threshold>${bloomThreshold.toFixed(2)}</span>
+        </div>
+        ${bloomActive ? '' : '<p style="margin-top:0.5rem;font-size:0.85rem;color:#a25b39;">Bloom controls unavailable (effect disabled or not initialised).</p>'}
+    `;
 
-        const strengthInput = bloomGroup.querySelector('#bloom-strength');
-        const radiusInput = bloomGroup.querySelector('#bloom-radius');
-        const thresholdInput = bloomGroup.querySelector('#bloom-threshold');
-        const strengthValue = bloomGroup.querySelector('[data-value-strength]');
-        const radiusValue = bloomGroup.querySelector('[data-value-radius]');
-        const thresholdValue = bloomGroup.querySelector('[data-value-threshold]');
+    const strengthInput = bloomGroup.querySelector('#bloom-strength');
+    const radiusInput = bloomGroup.querySelector('#bloom-radius');
+    const thresholdInput = bloomGroup.querySelector('#bloom-threshold');
+    const strengthValue = bloomGroup.querySelector('[data-value-strength]');
+    const radiusValue = bloomGroup.querySelector('[data-value-radius]');
+    const thresholdValue = bloomGroup.querySelector('[data-value-threshold]');
 
+    if (bloomActive) {
         strengthInput.addEventListener('input', () => {
             const strength = Number(strengthInput.value);
             strengthValue.textContent = strength.toFixed(2);
@@ -781,9 +786,9 @@ function setupLightingDebugPanel() {
             thresholdValue.textContent = threshold.toFixed(2);
             setBloomDebugSettings({ threshold });
         });
-
-        body.appendChild(bloomGroup);
     }
+
+    body.appendChild(bloomGroup);
 
     const closeButton = panel.querySelector('.lighting-debug-close');
     closeButton.addEventListener('click', () => {
