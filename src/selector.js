@@ -371,7 +371,9 @@ export function updateSelector(deltaTime = 0.016) {
     
     // Make items spin around their own axis
     // Use frame-rate independent rotation with variable speed based on selection
-    const baseRotationSpeed = 0.5; // radians per second (base speed)
+const baseRotationSpeed = 0.5; // radians per second (base speed)
+const SPIN_IMPULSE_DURATION = 1.0; // seconds
+const SPIN_IMPULSE_ROTATION = Math.PI * 2; // one full turn
     
     items.forEach((item) => {
         const mesh = item.mesh;
@@ -397,7 +399,35 @@ export function updateSelector(deltaTime = 0.016) {
         // Apply rotation with current speed multiplier
         const actualRotationSpeed = baseRotationSpeed * newSpeed;
         mesh.rotation.y += actualRotationSpeed * clampedDelta;
+
+        if (mesh.userData.spinImpulses && mesh.userData.spinImpulses.length) {
+            mesh.userData.spinImpulses = mesh.userData.spinImpulses.filter((impulse) => {
+                const prevProgress = impulse.elapsed / SPIN_IMPULSE_DURATION;
+                impulse.elapsed += clampedDelta;
+                const nextProgress = Math.min(1, impulse.elapsed / SPIN_IMPULSE_DURATION);
+                const prevAngle = impulse.angle;
+                const eased = easeOutCubic(nextProgress);
+                const totalAngle = SPIN_IMPULSE_ROTATION * eased;
+                const deltaAngle = totalAngle - prevAngle;
+                mesh.rotation.y += deltaAngle;
+                impulse.angle = totalAngle;
+                return nextProgress < 1;
+            });
+        }
     });
+}
+
+function easeOutCubic(t) {
+    const inv = 1 - t;
+    return 1 - inv * inv * inv;
+}
+
+export function addSpinImpulse(mesh) {
+    if (!mesh) return;
+    if (!mesh.userData.spinImpulses) {
+        mesh.userData.spinImpulses = [];
+    }
+    mesh.userData.spinImpulses.push({ elapsed: 0, angle: 0 });
 }
 
 /**

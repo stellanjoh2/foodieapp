@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { initScene, startRenderLoop, getRenderer, getTopSpotlight } from './scene.js';
 import { initModelLoader, loadModel } from './models.js';
 import { initControls } from './controls.js';
-import { initSelector, selectPrevious, selectNext, updateSelector, getSelectedItem, getSelectedIndex, getItemCount } from './selector.js';
+import { initSelector, selectPrevious, selectNext, updateSelector, getSelectedItem, getSelectedIndex, getItemCount, addSpinImpulse } from './selector.js';
 import { initPostProcessing, render as renderPostProcessing, setBloomEnabled, isBloomEnabled } from './postprocessing.js';
 import { initOverlay, animateOverlaySelectionChange, updateOverlayContent, adjustQuantity } from './ui/overlay.js';
 import { initShopkeeper } from './ui/shopkeeper.js';
@@ -285,6 +285,10 @@ function handleQuantityChangeSound(event) {
     }
     if (detail.action === 'increment') {
         playOkSound(1.0);
+        const selected = getSelectedItem();
+        if (selected?.mesh) {
+            addSpinImpulse(selected.mesh);
+        }
     } else if (detail.action === 'decrement') {
         playCancelSound();
     }
