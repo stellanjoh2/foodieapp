@@ -24,13 +24,14 @@ export function fireConfettiBlast() {
     if (!confettiInstance) return;
 
     confettiInstance({
-        particleCount: 180,
-        spread: 80,
-        startVelocity: 65,
-        gravity: 1.1,
-        ticks: 200,
-        scalar: 1.4,
-        origin: { x: 0.5, y: 0.6 }
+        particleCount: 220,
+        spread: 120,
+        startVelocity: 75,
+        decay: 0.88,
+        gravity: 0.8,
+        ticks: 240,
+        scalar: 1.6,
+        origin: { x: 0.5, y: 0.85 }
     });
 }
 
