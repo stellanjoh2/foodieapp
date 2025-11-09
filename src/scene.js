@@ -46,7 +46,7 @@ export function initScene(container) {
     renderer.domElement.style.left = '0';
     renderer.domElement.style.width = '100%';
     renderer.domElement.style.height = '100%';
-    renderer.domElement.style.zIndex = '0';
+    renderer.domElement.style.zIndex = '1';
     container.appendChild(renderer.domElement);
 
     // Lighting

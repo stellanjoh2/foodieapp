@@ -14,6 +14,7 @@ import { initShopkeeper } from './ui/shopkeeper.js';
 import { getFoodDetailsByName } from './data/foodDetails.js';
 import { loadSfx, playSfx } from './audio.js';
 import { getPerformanceTier } from './utils.js';
+import { initConfetti, fireConfettiBlast } from './confetti.js';
 
 // Application state
 const state = {
@@ -63,6 +64,7 @@ async function init() {
         setupMusicToggle();
         document.addEventListener('overlay:quantity-change', handleQuantityChangeSound);
     initShopkeeper();
+    initConfetti();
 
     try {
         // Initialize scene
@@ -289,6 +291,7 @@ function handleQuantityChangeSound(event) {
         if (selected?.mesh) {
             addSpinImpulse(selected.mesh);
         }
+        fireConfettiBlast();
     } else if (detail.action === 'decrement') {
         playCancelSound();
     }
