@@ -11,6 +11,8 @@ let scene, camera, renderer;
 let isRendering = true;
 let topSpotLight = null;
 let environmentMap = null;
+const DEFAULT_ENV_INTENSITY = 2.0;
+let environmentIntensity = DEFAULT_ENV_INTENSITY;
 
 /**
  * Initialize Three.js scene
@@ -172,6 +174,7 @@ function setupLighting() {
 function applyEnvironmentMap() {
     if (environmentMap) {
         scene.environment = environmentMap;
+        setSceneEnvironmentIntensity(environmentIntensity);
         return;
     }
 
@@ -184,6 +187,7 @@ function applyEnvironmentMap() {
             environmentMap = texture;
             if (scene) {
                 scene.environment = environmentMap;
+                setSceneEnvironmentIntensity(environmentIntensity);
             }
         },
         undefined,
@@ -191,6 +195,32 @@ function applyEnvironmentMap() {
             console.warn('Failed to load HDRI environment texture:', error);
         }
     );
+}
+
+function setSceneEnvironmentIntensity(intensity) {
+    if (!scene) return;
+    const applyIntensity = (material) => {
+        if (!material) return;
+        if (Array.isArray(material)) {
+            material.forEach(applyIntensity);
+            return;
+        }
+        if ('envMapIntensity' in material) {
+            material.envMapIntensity = intensity;
+            material.needsUpdate = true;
+        }
+    };
+
+    scene.traverse((child) => {
+        if (child.isMesh || child.isPoints || child.isLine) {
+            applyIntensity(child.material);
+        }
+    });
+}
+
+export function setEnvironmentReflectionIntensity(intensity = DEFAULT_ENV_INTENSITY) {
+    environmentIntensity = intensity;
+    setSceneEnvironmentIntensity(environmentIntensity);
 }
 
 export function getTopSpotlight() {

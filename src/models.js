@@ -20,6 +20,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { applyFresnelToMaterial } from './fresnel.js';
 
+const ENV_REFLECTION_INTENSITY = 2.2;
+
 let loader;
 let loadedModel = null;
 let foodItems = {};
@@ -158,6 +160,7 @@ async function loadExternalTextures(scene) {
         if (!(child.material instanceof THREE.MeshStandardMaterial)) {
             child.material = new THREE.MeshStandardMaterial({ color: 0xffffff });
         }
+        applyEnvironmentIntensity(child.material);
 
         baseTextures.forEach(({ suffix, apply, label }) => {
             loadTasks.push(loadTextureAsset(
@@ -192,6 +195,7 @@ function loadTextureAsset(loader, file, material, applyTexture, label) {
             (texture) => {
                 texture.flipY = false;
                 applyTexture(texture, material);
+                applyEnvironmentIntensity(material);
                 material.needsUpdate = true;
                 resolve();
             },
@@ -279,6 +283,7 @@ export function getFoodItem(itemName) {
         if (originalMat.displacementMap) clonedMat.displacementMap = originalMat.displacementMap;
         if (originalMat.lightMap) clonedMat.lightMap = originalMat.lightMap;
         if (originalMat.envMap) clonedMat.envMap = originalMat.envMap;
+        applyEnvironmentIntensity(clonedMat);
         
         // Copy texture-related properties
         if (originalMat.roughness !== undefined) clonedMat.roughness = originalMat.roughness;
@@ -380,6 +385,17 @@ export function getFoodItem(itemName) {
     }
     
     return clonedMesh;
+}
+
+function applyEnvironmentIntensity(material) {
+    if (!material) return;
+    if (Array.isArray(material)) {
+        material.forEach(applyEnvironmentIntensity);
+        return;
+    }
+    if ('envMapIntensity' in material) {
+        material.envMapIntensity = ENV_REFLECTION_INTENSITY;
+    }
 }
 
 /**
