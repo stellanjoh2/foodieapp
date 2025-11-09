@@ -1,8 +1,6 @@
 import confetti from 'https://cdn.skypack.dev/canvas-confetti';
 
 let confettiInstance = null;
-let resizeObserver = null;
-let resizeHandler = null;
 
 export function initConfetti() {
     const canvas = document.getElementById('confetti-canvas');
@@ -10,28 +8,16 @@ export function initConfetti() {
 
     if (confettiInstance) return;
 
+    const container = document.getElementById('canvas-container');
+    if (container) {
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+    }
+
     confettiInstance = confetti.create(canvas, {
         resize: true,
         useWorker: true
     });
-
-    const container = document.getElementById('canvas-container');
-    const updateSize = () => {
-        const width = container?.clientWidth ?? window.innerWidth;
-        const height = container?.clientHeight ?? window.innerHeight;
-        canvas.width = width;
-        canvas.height = height;
-    };
-
-    updateSize();
-
-    if (container && 'ResizeObserver' in window) {
-        resizeObserver = new ResizeObserver(updateSize);
-        resizeObserver.observe(container);
-    } else {
-        resizeHandler = updateSize;
-        window.addEventListener('resize', resizeHandler);
-    }
 }
 
 export function fireConfettiBlast() {
@@ -49,18 +35,6 @@ export function fireConfettiBlast() {
 }
 
 export function disposeConfetti() {
-    if (resizeObserver) {
-        const container = document.getElementById('canvas-container');
-        if (container) {
-            resizeObserver.unobserve(container);
-        }
-        resizeObserver.disconnect();
-        resizeObserver = null;
-    }
-    if (resizeHandler) {
-        window.removeEventListener('resize', resizeHandler);
-        resizeHandler = null;
-    }
     confettiInstance = null;
 }
 
