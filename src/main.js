@@ -602,8 +602,9 @@ function setupLightingDebugPanel() {
     style.textContent = `
         .lighting-debug-panel {
             position: fixed;
-            bottom: 1.5rem;
+            top: 1.5rem;
             right: 1.5rem;
+            bottom: 1.5rem;
             background: rgba(255, 255, 255, 0.45);
             border: 1px solid rgba(255,255,255,0.65);
             backdrop-filter: blur(18px);
@@ -650,7 +651,7 @@ function setupLightingDebugPanel() {
             display: grid;
             gap: 1rem;
             overflow-y: auto;
-            max-height: calc(100vh - 7rem);
+            max-height: calc(100vh - 6.8rem);
         }
         .lighting-debug-group {
             background: rgba(255,255,255,0.9);
@@ -750,9 +751,9 @@ function setupLightingDebugPanel() {
         }
         .lighting-debug-copy {
             border: none;
-            background: rgba(240,87,58,0.18);
-            color: #533822;
-            padding: 0.45rem 0.75rem;
+            background: rgba(240,87,58,1);
+            color: #ffffff;
+            padding: 0.6rem 0.85rem;
             border-radius: 999px;
             font-family: inherit;
             font-weight: 600;
@@ -764,13 +765,14 @@ function setupLightingDebugPanel() {
             margin-top: 0.6rem;
         }
         .lighting-debug-copy:hover {
-            background: rgba(240,87,58,0.28);
+            background: rgba(240,87,58,0.82);
         }
         .lighting-debug-copy:active {
             transform: translateY(1px);
         }
         .lighting-debug-copy.is-success {
-            background: rgba(106,199,122,0.28);
+            background: rgba(106,199,122,1);
+            color: #ffffff;
         }
         body[data-lighting-debug="open"] .hud-indicators,
         body[data-lighting-debug="open"] #ui-overlay,
