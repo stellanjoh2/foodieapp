@@ -779,6 +779,10 @@ function setupLightingDebugPanel() {
         body[data-lighting-debug="open"] .shopkeeper {
             opacity: 0;
             pointer-events: none;
+            transition: opacity 160ms ease, transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        body[data-lighting-debug="open"] .shopkeeper {
+            transform: translateX(-12%);
         }
     `;
     document.head.appendChild(style);
@@ -1189,6 +1193,7 @@ function teardownLightingDebugPanel() {
     if (lightingDebugPanel) {
         lightingDebugPanel.classList.remove('is-visible');
         const panel = lightingDebugPanel;
+        document.body.removeAttribute('data-lighting-debug');
         document.body.removeAttribute('data-lighting-debug');
         setLightingDebugAudioMuted(false);
         setTimeout(() => {
