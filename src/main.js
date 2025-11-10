@@ -1216,6 +1216,7 @@ function setupLightingDebugPanel() {
     resetAllButton.type = 'button';
     resetAllButton.className = 'lighting-debug-copy';
     resetAllButton.textContent = 'Reset All';
+    resetAllButton.style.marginTop = '0.25rem';
     resetAllButton.addEventListener('click', () => {
         setGlobalLightingAdjustments({ hue: 0, saturation: 1, lightness: 1 });
         setEnvironmentReflectionIntensity(envOriginal);
@@ -1231,7 +1232,14 @@ function setupLightingDebugPanel() {
         });
         refreshColorBindings();
     });
-    body.appendChild(resetAllButton);
+    resetAllButton.style.marginTop = '0.35rem';
+    const copyButton = document.createElement('button');
+    copyButton.type = 'button';
+    copyButton.className = 'lighting-debug-copy';
+    copyButton.textContent = 'Copy Settings';
+    copyButton.style.marginTop = '0.5rem';
+
+    body.append(copyButton, resetAllButton);
 
     const copyButton = document.createElement('button');
     copyButton.type = 'button';
@@ -1279,8 +1287,6 @@ function setupLightingDebugPanel() {
         }
     };
     copyButton.addEventListener('click', () => handleCopy(copyButton));
-
-    body.appendChild(copyButton);
 
     const closeButton = panel.querySelector('.lighting-debug-close');
     closeButton.addEventListener('click', () => {
