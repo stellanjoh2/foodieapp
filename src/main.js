@@ -841,7 +841,7 @@ function setupLightingDebugPanel() {
         }
     };
 
-    const createRangeField = ({ label, min, max, step, value, original, decimals = 2, disabled = false, onChange }) => {
+    const createRangeField = ({ label, min, max, step, value, original, decimals = 2, disabled = false, onChange, dataAttributes = null }) => {
         const field = document.createElement('div');
         field.className = 'lighting-debug-field';
 
@@ -868,6 +868,17 @@ function setupLightingDebugPanel() {
         number.step = step;
         number.value = formatNumber(value, decimals);
         number.disabled = disabled;
+
+        if (dataAttributes?.range) {
+            Object.entries(dataAttributes.range).forEach(([key, val]) => {
+                range.dataset[key] = val;
+            });
+        }
+        if (dataAttributes?.number) {
+            Object.entries(dataAttributes.number).forEach(([key, val]) => {
+                number.dataset[key] = val;
+            });
+        }
 
         const reset = document.createElement('button');
         reset.type = 'button';
@@ -1039,6 +1050,10 @@ function setupLightingDebugPanel() {
         onChange: (val) => {
             setGlobalLightingAdjustments({ hue: val });
             refreshColorBindings();
+        },
+        dataAttributes: {
+            range: { globalControl: 'true', type: 'hue', target: 'range' },
+            number: { globalControl: 'true', type: 'hue', target: 'number' }
         }
     }));
     globalGroup.appendChild(createRangeField({
@@ -1051,6 +1066,10 @@ function setupLightingDebugPanel() {
         onChange: (val) => {
             setGlobalLightingAdjustments({ saturation: val });
             refreshColorBindings();
+        },
+        dataAttributes: {
+            range: { globalControl: 'true', type: 'saturation', target: 'range' },
+            number: { globalControl: 'true', type: 'saturation', target: 'number' }
         }
     }));
     globalGroup.appendChild(createRangeField({
@@ -1063,6 +1082,10 @@ function setupLightingDebugPanel() {
         onChange: (val) => {
             setGlobalLightingAdjustments({ lightness: val });
             refreshColorBindings();
+        },
+        dataAttributes: {
+            range: { globalControl: 'true', type: 'lightness', target: 'range' },
+            number: { globalControl: 'true', type: 'lightness', target: 'number' }
         }
     }));
     body.appendChild(globalGroup);
@@ -1212,39 +1235,11 @@ function setupLightingDebugPanel() {
 
     refreshColorBindings();
 
-    const resetAllButton = document.createElement('button');
-    resetAllButton.type = 'button';
-    resetAllButton.className = 'lighting-debug-copy';
-    resetAllButton.textContent = 'Reset All';
-    resetAllButton.style.marginTop = '0.25rem';
-    resetAllButton.addEventListener('click', () => {
-        setGlobalLightingAdjustments({ hue: 0, saturation: 1, lightness: 1 });
-        setEnvironmentReflectionIntensity(envOriginal);
-        setBackgroundGradientColors({
-            top: gradientState.top,
-            bottom: gradientState.bottom
-        });
-        lightingRegistry.forEach((descriptor) => {
-            if (descriptor.light && descriptor.originalColor) {
-                descriptor.light.color.copy(descriptor.originalColor);
-                updateLightOriginalColor(descriptor, descriptor.originalColor.clone());
-            }
-        });
-        refreshColorBindings();
-    });
-    resetAllButton.style.marginTop = '0.35rem';
     const copyButton = document.createElement('button');
     copyButton.type = 'button';
     copyButton.className = 'lighting-debug-copy';
     copyButton.textContent = 'Copy Settings';
     copyButton.style.marginTop = '0.5rem';
-
-    body.append(copyButton, resetAllButton);
-
-    const copyButton = document.createElement('button');
-    copyButton.type = 'button';
-    copyButton.className = 'lighting-debug-copy';
-    copyButton.textContent = 'Copy Settings';
     const handleCopy = async (button) => {
         const payload = {
             lights: lights.map(({ id, label, light }) => ({
@@ -1287,6 +1282,41 @@ function setupLightingDebugPanel() {
         }
     };
     copyButton.addEventListener('click', () => handleCopy(copyButton));
+    body.appendChild(copyButton);
+
+    const resetAllButton = document.createElement('button');
+    resetAllButton.type = 'button';
+    resetAllButton.className = 'lighting-debug-copy';
+    resetAllButton.textContent = 'Reset All';
+    resetAllButton.style.marginTop = '0.35rem';
+    resetAllButton.addEventListener('click', () => {
+        setGlobalLightingAdjustments({ hue: 0, saturation: 1, lightness: 1 });
+        setEnvironmentReflectionIntensity(envOriginal);
+        setBackgroundGradientColors({
+            top: gradientState.top,
+            bottom: gradientState.bottom
+        });
+        lightingRegistry.forEach((descriptor) => {
+            if (descriptor.light && descriptor.originalColor) {
+                descriptor.light.color.copy(descriptor.originalColor);
+                updateLightOriginalColor(descriptor, descriptor.originalColor.clone());
+            }
+        });
+        refreshColorBindings();
+        const globalRangeInputs = panel.querySelectorAll('[data-global-control="true"][data-target="range"]');
+        globalRangeInputs.forEach((input) => {
+            const { type } = input.dataset;
+            if (type === 'hue') input.value = '0';
+            if (type === 'saturation' || type === 'lightness') input.value = '1';
+        });
+        const globalNumberInputs = panel.querySelectorAll('[data-global-control="true"][data-target="number"]');
+        globalNumberInputs.forEach((input) => {
+            const { type } = input.dataset;
+            if (type === 'hue') input.value = '0';
+            if (type === 'saturation' || type === 'lightness') input.value = '1';
+        });
+    });
+    body.appendChild(resetAllButton);
 
     const closeButton = panel.querySelector('.lighting-debug-close');
     closeButton.addEventListener('click', () => {
