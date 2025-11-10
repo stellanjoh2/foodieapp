@@ -98,14 +98,18 @@ function createSunsetGradient(width, height) {
     // VelvetSun gradient: dark red at top → bright orange/yellow at bottom
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
     
+    const topAdjusted = getAdjustedColorFromHex(gradientColors.top);
+    const middleAdjusted = getAdjustedColorFromHex(gradientColors.middle);
+    const bottomAdjusted = getAdjustedColorFromHex(gradientColors.bottom);
+
     // Top: Dark red/velvet red
-    gradient.addColorStop(0, gradientColors.top);      // Dark red/velvet red
+    gradient.addColorStop(0, `#${topAdjusted.getHexString()}`);      // Dark red/velvet red
     
     // Transition through red-orange
-    gradient.addColorStop(0.5, gradientColors.middle);    // Bright red-orange
+    gradient.addColorStop(0.5, `#${middleAdjusted.getHexString()}`);    // Bright red-orange
     
     // Bottom: Bright orange/yellow
-    gradient.addColorStop(1, gradientColors.bottom);      // Bright orange-yellow
+    gradient.addColorStop(1, `#${bottomAdjusted.getHexString()}`);      // Bright orange-yellow
     
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
@@ -334,6 +338,23 @@ function clamp01(value) {
     return Math.max(0, Math.min(1, value));
 }
 
+function adjustHSL(hsl) {
+    const hue = THREE.MathUtils.euclideanModulo(hsl.h + (globalLightingAdjust.hue / 360), 1);
+    const saturation = clamp01(hsl.s * globalLightingAdjust.saturation);
+    const lightness = clamp01(hsl.l * globalLightingAdjust.lightness);
+    return { h: hue, s: saturation, l: lightness };
+}
+
+function getAdjustedColorFromHex(hex) {
+    const baseColor = new THREE.Color(hex);
+    const hsl = { h: 0, s: 0, l: 0 };
+    baseColor.getHSL(hsl);
+    const adjusted = adjustHSL(hsl);
+    const result = new THREE.Color();
+    result.setHSL(adjusted.h, adjusted.s, adjusted.l);
+    return result;
+}
+
 function applyGlobalLightingAdjustments() {
     lightingRegistry.forEach((entry) => {
         const light = entry.light;
@@ -342,12 +363,10 @@ function applyGlobalLightingAdjustments() {
         const hsl = { h: 0, s: 0, l: 0 };
         base.getHSL(hsl);
 
-        let hue = hsl.h + (globalLightingAdjust.hue / 360);
-        hue = THREE.MathUtils.euclideanModulo(hue, 1);
-        const saturation = clamp01(hsl.s * globalLightingAdjust.saturation);
-        const lightness = clamp01(hsl.l * globalLightingAdjust.lightness);
-        light.color.setHSL(hue, saturation, lightness);
+        const adjusted = adjustHSL(hsl);
+        light.color.setHSL(adjusted.h, adjusted.s, adjusted.l);
     });
+    updateSceneBackgroundGradient();
 }
 
 export function getGlobalLightingAdjustments() {
