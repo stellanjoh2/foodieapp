@@ -38,6 +38,8 @@ const sfxCache = new Map();
 const sfxLoads = new Map();
 let lightingDebugPanel = null;
 let lightingDebugStyle = null;
+let savedAudioVolume = null;
+let sfxMutedForLighting = false;
 const SFX_CONFIG = {
     swipe: { path: 'Sounds/coin-4.wav', volume: 0.6 },
     cancel: { path: 'Sounds/cancel-1.wav', volume: 0.55 },
@@ -58,6 +60,26 @@ const loadingUIState = {
     startTime: 0,
     completionTimeout: null
 };
+
+function setLightingDebugAudioMuted(active) {
+    if (active) {
+        if (!sfxMutedForLighting) {
+            sfxMutedForLighting = true;
+            if (state.audio) {
+                if (savedAudioVolume === null && typeof state.audio.volume === 'number') {
+                    savedAudioVolume = state.audio.volume;
+                }
+                state.audio.volume = 0;
+            }
+        }
+    } else if (sfxMutedForLighting) {
+        sfxMutedForLighting = false;
+        if (state.audio && savedAudioVolume !== null) {
+            state.audio.volume = savedAudioVolume;
+        }
+        savedAudioVolume = null;
+    }
+}
 
 /**
  * Initialize application
@@ -236,37 +258,12 @@ function preloadSfx(key) {
 }
 
 function playSfxKey(key, overrides = {}) {
-    if (!state.initialized) return;
+    if (!state.initialized || sfxMutedForLighting) return;
     const config = SFX_CONFIG[key];
     if (!config) return;
     const trigger = (asset) => {
         if (asset) {
             playSfx(asset, { ...config, ...overrides });
-        }
-    };
-
-    const getContrastColor = (hex) => {
-        const clean = (hex || '').replace('#', '');
-        if (clean.length !== 6) return '#ffffff';
-        const r = parseInt(clean.substring(0, 2), 16);
-        const g = parseInt(clean.substring(2, 4), 16);
-        const b = parseInt(clean.substring(4, 6), 16);
-        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-        return luminance > 0.6 ? '#2e1a12' : '#ffffff';
-    };
-
-    const setResetState = (button, { dirty = false, tint = null } = {}) => {
-        if (!button) return;
-        button.classList.toggle('is-dirty', !!dirty);
-        if (dirty && tint) {
-            button.style.background = tint;
-            button.style.color = getContrastColor(tint);
-        } else if (dirty) {
-            button.style.background = '';
-            button.style.color = '';
-        } else {
-            button.style.background = '';
-            button.style.color = '';
         }
     };
     const cached = sfxCache.get(key);
@@ -607,7 +604,10 @@ function setupLightingDebugPanel() {
             position: fixed;
             bottom: 1.5rem;
             right: 1.5rem;
-            background: rgba(255, 255, 255, 0.94);
+            background: rgba(255, 255, 255, 0.45);
+            border: 1px solid rgba(255,255,255,0.65);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
             border-radius: 16px;
             box-shadow: 0 18px 40px rgba(0,0,0,0.18);
             width: 320px;
@@ -629,7 +629,7 @@ function setupLightingDebugPanel() {
             align-items: center;
             justify-content: space-between;
             padding: 0.8rem 1rem;
-            background: rgba(240, 87, 58, 0.18);
+            background: #ffffff;
             border-bottom: 1px solid rgba(0,0,0,0.08);
             font-weight: 600;
         }
@@ -782,6 +782,7 @@ function setupLightingDebugPanel() {
     document.head.appendChild(style);
     document.body.appendChild(panel);
     document.body.setAttribute('data-lighting-debug', 'open');
+    setLightingDebugAudioMuted(true);
     lightingDebugPanel = panel;
     lightingDebugStyle = style;
     requestAnimationFrame(() => {
@@ -1120,7 +1121,6 @@ function setupLightingDebugPanel() {
     }
     body.appendChild(bloomGroup);
 
-    const copyButtonHeader = panel.querySelector('[data-action="copy-settings"]');
     const copyButton = document.createElement('button');
     copyButton.type = 'button';
     copyButton.className = 'lighting-debug-copy';
@@ -1165,7 +1165,6 @@ function setupLightingDebugPanel() {
             console.log('Lighting Settings\n', text);
         }
     };
-    copyButtonHeader.addEventListener('click', () => handleCopy(copyButtonHeader));
     copyButton.addEventListener('click', () => handleCopy(copyButton));
 
     body.appendChild(copyButton);
@@ -1174,6 +1173,7 @@ function setupLightingDebugPanel() {
     closeButton.addEventListener('click', () => {
         panel.classList.remove('is-visible');
         document.body.removeAttribute('data-lighting-debug');
+        setLightingDebugAudioMuted(false);
         setTimeout(() => {
             panel.remove();
             style.remove();
@@ -1188,6 +1188,7 @@ function teardownLightingDebugPanel() {
         lightingDebugPanel.classList.remove('is-visible');
         const panel = lightingDebugPanel;
         document.body.removeAttribute('data-lighting-debug');
+        setLightingDebugAudioMuted(false);
         setTimeout(() => {
             panel.remove();
             if (lightingDebugStyle) {
