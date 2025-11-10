@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { initScene, startRenderLoop, getRenderer, getTopSpotlight, setEnvironmentReflectionIntensity, getLightingRegistry, getEnvironmentReflectionIntensity, getBackgroundGradientColors, setBackgroundGradientColors, getGlobalLightingAdjustments, setGlobalLightingAdjustments, updateLightOriginalColor, getAdjustedGradientColors } from './scene.js';
+import { initScene, startRenderLoop, getRenderer, getTopSpotlight, setEnvironmentReflectionIntensity, getLightingRegistry, getEnvironmentReflectionIntensity, getBackgroundGradientColors, setBackgroundGradientColors, getGlobalLightingAdjustments, setGlobalLightingAdjustments, updateLightOriginalColor, getAdjustedGradientColors, setLightBaseColor, setBackgroundColorFromAdjusted } from './scene.js';
 import { initModelLoader, loadModel } from './models.js';
 import { initControls } from './controls.js';
 import { initSelector, selectPrevious, selectNext, updateSelector, getSelectedItem, getSelectedIndex, getItemCount, addSpinImpulse } from './selector.js';
@@ -948,7 +948,7 @@ function setupLightingDebugPanel() {
         reset.innerText = '×';
         reset.disabled = disabled;
 
-        const defaultHex = (baseColor || (typeof getCurrentColor === 'function' ? getCurrentColor() : '#FFFFFF') || '#FFFFFF').toUpperCase();
+        const defaultHex = ((typeof getCurrentColor === 'function' ? getCurrentColor() : null) || baseColor || '#FFFFFF').toUpperCase();
         let currentHex = defaultHex;
         let userDirty = false;
 
@@ -972,9 +972,7 @@ function setupLightingDebugPanel() {
             }
             const normalizedUpper = normalized.toUpperCase();
             if (descriptor && descriptor.light) {
-                const newColor = new THREE.Color(normalizedUpper);
-                descriptor.light.color.copy(newColor);
-                updateLightOriginalColor(descriptor, newColor.clone());
+                setLightBaseColor(descriptor, normalizedUpper);
             } else if (typeof onChange === 'function') {
                 onChange(normalizedUpper);
             }
@@ -1008,9 +1006,7 @@ function setupLightingDebugPanel() {
             hexInput.addEventListener('blur', handleHexCommit);
             reset.addEventListener('click', () => {
                 if (descriptor && descriptor.light) {
-                    const baseColorObj = new THREE.Color(defaultHex);
-                    descriptor.light.color.copy(baseColorObj);
-                    updateLightOriginalColor(descriptor, baseColorObj.clone());
+                    setLightBaseColor(descriptor, defaultHex);
                 } else if (typeof onChange === 'function') {
                     onChange(defaultHex);
                 }
@@ -1147,7 +1143,7 @@ function setupLightingDebugPanel() {
         baseColor: gradientState.top,
         getCurrentColor: () => getAdjustedGradientColors().top,
         onChange: (hex) => {
-            setBackgroundGradientColors({ top: hex });
+            setBackgroundColorFromAdjusted('top', hex);
             refreshColorBindings();
         }
     }));
@@ -1156,7 +1152,7 @@ function setupLightingDebugPanel() {
         baseColor: gradientState.bottom,
         getCurrentColor: () => getAdjustedGradientColors().bottom,
         onChange: (hex) => {
-            setBackgroundGradientColors({ bottom: hex });
+            setBackgroundColorFromAdjusted('bottom', hex);
             refreshColorBindings();
         }
     }));
@@ -1298,6 +1294,7 @@ function teardownLightingDebugPanel() {
         lightingDebugStyle.remove();
         lightingDebugStyle = null;
     }
+    colorFieldBindings.length = 0;
 }
 
 function setupLightingDebugTrigger() {

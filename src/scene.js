@@ -14,7 +14,7 @@ let environmentMap = null;
 const DEFAULT_ENV_INTENSITY = 2.0;
 let environmentIntensity = DEFAULT_ENV_INTENSITY;
 const lightingRegistry = [];
-let gradientColors = {
+const gradientBaseColors = {
     top: '#e73827',
     middle: '#f0573a',
     bottom: '#f8aa3b'
@@ -98,9 +98,9 @@ function createSunsetGradient(width, height) {
     // VelvetSun gradient: dark red at top → bright orange/yellow at bottom
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
     
-    const topAdjusted = getAdjustedColorFromHex(gradientColors.top);
-    const middleAdjusted = getAdjustedColorFromHex(gradientColors.middle);
-    const bottomAdjusted = getAdjustedColorFromHex(gradientColors.bottom);
+    const topAdjusted = getAdjustedColorFromHex(gradientBaseColors.top);
+    const middleAdjusted = getAdjustedColorFromHex(gradientBaseColors.middle);
+    const bottomAdjusted = getAdjustedColorFromHex(gradientBaseColors.bottom);
 
     // Top: Dark red/velvet red
     gradient.addColorStop(0, `#${topAdjusted.getHexString()}`);      // Dark red/velvet red
@@ -320,16 +320,16 @@ function updateSceneBackgroundGradient() {
 }
 
 export function getBackgroundGradientColors() {
-    return { ...gradientColors };
+    return { ...gradientBaseColors };
 }
 
 export function setBackgroundGradientColors(update = {}) {
-    gradientColors = { ...gradientColors, ...update };
+    Object.assign(gradientBaseColors, update);
     if (update.top || update.bottom) {
-        const topColor = new THREE.Color(gradientColors.top);
-        const bottomColor = new THREE.Color(gradientColors.bottom);
+        const topColor = new THREE.Color(gradientBaseColors.top);
+        const bottomColor = new THREE.Color(gradientBaseColors.bottom);
         const middleColor = topColor.clone().lerp(bottomColor, 0.5);
-        gradientColors.middle = `#${middleColor.getHexString()}`;
+        gradientBaseColors.middle = `#${middleColor.getHexString()}`;
     }
     updateSceneBackgroundGradient();
 }
@@ -356,14 +356,45 @@ function getAdjustedColorFromHex(hex) {
 }
 
 export function getAdjustedGradientColors() {
-    const top = getAdjustedColorFromHex(gradientColors.top);
-    const middle = getAdjustedColorFromHex(gradientColors.middle);
-    const bottom = getAdjustedColorFromHex(gradientColors.bottom);
+    const top = getAdjustedColorFromHex(gradientBaseColors.top);
+    const middle = getAdjustedColorFromHex(gradientBaseColors.middle);
+    const bottom = getAdjustedColorFromHex(gradientBaseColors.bottom);
     return {
         top: `#${top.getHexString().toUpperCase()}`,
         middle: `#${middle.getHexString().toUpperCase()}`,
         bottom: `#${bottom.getHexString().toUpperCase()}`
     };
+}
+
+function invertAdjustHSL(hsl) {
+    const hue = THREE.MathUtils.euclideanModulo(hsl.h - (globalLightingAdjust.hue / 360), 1);
+    const saturation = clamp01(globalLightingAdjust.saturation === 0 ? 0 : hsl.s / globalLightingAdjust.saturation);
+    const lightness = clamp01(globalLightingAdjust.lightness === 0 ? 0 : hsl.l / globalLightingAdjust.lightness);
+    return { h: hue, s: saturation, l: lightness };
+}
+
+function getBaseColorFromAdjustedHex(hex) {
+    const adjustedColor = new THREE.Color(hex);
+    const hsl = { h: 0, s: 0, l: 0 };
+    adjustedColor.getHSL(hsl);
+    const original = invertAdjustHSL(hsl);
+    const color = new THREE.Color();
+    color.setHSL(original.h, original.s, original.l);
+    return color;
+}
+
+export function setLightBaseColor(descriptor, adjustedHex) {
+    if (!descriptor || !descriptor.light) return;
+    const baseColor = getBaseColorFromAdjustedHex(adjustedHex);
+    updateLightOriginalColor(descriptor, baseColor);
+    applyGlobalLightingAdjustments();
+}
+
+export function setBackgroundColorFromAdjusted(position, adjustedHex) {
+    if (!['top', 'bottom'].includes(position)) return;
+    const baseColor = getBaseColorFromAdjustedHex(adjustedHex);
+    const update = { [position]: `#${baseColor.getHexString()}` };
+    setBackgroundGradientColors(update);
 }
 
 function applyGlobalLightingAdjustments() {
