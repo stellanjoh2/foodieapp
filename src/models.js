@@ -19,6 +19,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { applyFresnelToMaterial } from './fresnel.js';
+import { registerFresnelMaterial } from './scene.js';
 
 const ENV_REFLECTION_INTENSITY = 2.2;
 
@@ -303,12 +304,14 @@ export function getFoodItem(itemName) {
         // Keep the warm red-orange hue (already correct from the gradient color)
         rimLightColor.setHSL(hsl.h, hsl.s, hsl.l);
         
-        applyFresnelToMaterial(clonedMat, {
+        const fresnelConfig = {
             color: rimLightColor,
             intensity: 1.3365, // Reduced by 10% from 1.485
             power: 4.17,
             bias: 0.0
-        });
+        };
+        applyFresnelToMaterial(clonedMat, fresnelConfig);
+        registerFresnelMaterial(clonedMat, fresnelConfig);
         
         // Force material update
         clonedMat.needsUpdate = true;

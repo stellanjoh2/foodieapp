@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { getDevicePixelRatio, setupVisibilityHandling, getPerformanceTier } from './utils.js';
+import { updateFresnelMaterial } from './fresnel.js';
 import { updatePostProcessing } from './postprocessing.js';
 
 let scene, camera, renderer;
@@ -23,6 +24,18 @@ let globalLightingAdjust = {
     hue: 0,
     saturation: 1,
     lightness: 1
+};
+const fresnelMaterials = [];
+const fresnelMaster = {
+    intensity: null,
+    power: null,
+    color: null,
+    bias: null
+};
+let fresnelDefaults = {
+    intensity: null,
+    power: null,
+    bias: null
 };
 
 /**
@@ -302,6 +315,7 @@ function registerLightControl(entry) {
     lightingRegistry.push({
         intensityRange: [0, 5],
         intensityStep: 0.01,
+        initialColor: entry.light && entry.light.color ? entry.light.color.clone() : null,
         originalColor: entry.light && entry.light.color ? entry.light.color.clone() : null,
         ...entry
     });
@@ -345,14 +359,19 @@ function adjustHSL(hsl) {
     return { h: hue, s: saturation, l: lightness };
 }
 
-function getAdjustedColorFromHex(hex) {
-    const baseColor = new THREE.Color(hex);
+function getAdjustedColor(color) {
+    if (!color) return null;
+    const working = color.clone ? color.clone() : new THREE.Color(color);
     const hsl = { h: 0, s: 0, l: 0 };
-    baseColor.getHSL(hsl);
+    working.getHSL(hsl);
     const adjusted = adjustHSL(hsl);
     const result = new THREE.Color();
     result.setHSL(adjusted.h, adjusted.s, adjusted.l);
     return result;
+}
+
+function getAdjustedColorFromHex(hex) {
+    return getAdjustedColor(new THREE.Color(hex));
 }
 
 export function getAdjustedGradientColors() {
@@ -397,6 +416,104 @@ export function setBackgroundColorFromAdjusted(position, adjustedHex) {
     setBackgroundGradientColors(update);
 }
 
+function applyFresnelMaster() {
+    if (!fresnelMaterials.length) return;
+    fresnelMaterials.forEach((entry) => {
+        const sourceColor = fresnelMaster.color
+            ? new THREE.Color(fresnelMaster.color)
+            : entry.base.color.clone();
+        const adjustedColor = getAdjustedColor(sourceColor);
+        const intensity = fresnelMaster.intensity ?? entry.base.intensity;
+        const power = fresnelMaster.power ?? entry.base.power;
+        const bias = fresnelMaster.bias ?? entry.base.bias ?? 0;
+        updateFresnelMaterial(entry.material, {
+            color: adjustedColor,
+            intensity,
+            power,
+            bias
+        });
+    });
+}
+
+export function registerFresnelMaterial(material, baseSettings) {
+    if (!material) return;
+    const entry = {
+        material,
+        base: {
+            color: baseSettings.color.clone ? baseSettings.color.clone() : new THREE.Color(baseSettings.color),
+            intensity: baseSettings.intensity,
+            power: baseSettings.power,
+            bias: baseSettings.bias ?? 0
+        }
+    };
+    fresnelMaterials.push(entry);
+    if (fresnelDefaults.intensity === null) {
+        fresnelDefaults = {
+            intensity: baseSettings.intensity,
+            power: baseSettings.power,
+            bias: entry.base.bias
+        };
+        if (fresnelMaster.intensity === null) {
+            fresnelMaster.intensity = baseSettings.intensity;
+        }
+        if (fresnelMaster.power === null) {
+            fresnelMaster.power = baseSettings.power;
+        }
+        if (fresnelMaster.bias === null) {
+            fresnelMaster.bias = entry.base.bias;
+        }
+    }
+    applyFresnelMaster();
+}
+
+export function getFresnelMaster() {
+    const fallbackColor = fresnelMaterials.length
+        ? `#${fresnelMaterials[0].base.color.getHexString().toUpperCase()}`
+        : '#ffffff';
+    const baseColor = fresnelMaster.color
+        ? new THREE.Color(fresnelMaster.color)
+        : new THREE.Color(fallbackColor);
+    const displayColor = getAdjustedColor(baseColor) ?? baseColor;
+    return {
+        intensity: fresnelMaster.intensity ?? fresnelDefaults.intensity ?? 1,
+        power: fresnelMaster.power ?? fresnelDefaults.power ?? 4,
+        bias: fresnelMaster.bias ?? fresnelDefaults.bias ?? 0,
+        colorOverride: fresnelMaster.color,
+        displayColor: `#${displayColor.getHexString().toUpperCase()}`,
+        baseColor: fallbackColor
+    };
+}
+
+export function setFresnelMaster(update = {}) {
+    if (update.intensity !== undefined) {
+        fresnelMaster.intensity = update.intensity;
+    }
+    if (update.power !== undefined) {
+        fresnelMaster.power = update.power;
+    }
+    if (update.bias !== undefined) {
+        fresnelMaster.bias = update.bias;
+    }
+    if (update.color !== undefined) {
+        fresnelMaster.color = update.color;
+    }
+    applyFresnelMaster();
+}
+
+export function resetFresnelMaster() {
+    if (fresnelDefaults.intensity !== null) {
+        fresnelMaster.intensity = fresnelDefaults.intensity;
+    }
+    if (fresnelDefaults.power !== null) {
+        fresnelMaster.power = fresnelDefaults.power;
+    }
+    if (fresnelDefaults.bias !== null) {
+        fresnelMaster.bias = fresnelDefaults.bias;
+    }
+    fresnelMaster.color = null;
+    applyFresnelMaster();
+}
+
 function applyGlobalLightingAdjustments() {
     lightingRegistry.forEach((entry) => {
         const light = entry.light;
@@ -409,6 +526,7 @@ function applyGlobalLightingAdjustments() {
         light.color.setHSL(adjusted.h, adjusted.s, adjusted.l);
     });
     updateSceneBackgroundGradient();
+    applyFresnelMaster();
 }
 
 export function getGlobalLightingAdjustments() {

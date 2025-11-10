@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { initScene, startRenderLoop, getRenderer, getTopSpotlight, setEnvironmentReflectionIntensity, getLightingRegistry, getEnvironmentReflectionIntensity, getBackgroundGradientColors, setBackgroundGradientColors, getGlobalLightingAdjustments, setGlobalLightingAdjustments, updateLightOriginalColor, getAdjustedGradientColors, setLightBaseColor, setBackgroundColorFromAdjusted } from './scene.js';
+import { initScene, startRenderLoop, getRenderer, getTopSpotlight, setEnvironmentReflectionIntensity, getLightingRegistry, getEnvironmentReflectionIntensity, getBackgroundGradientColors, setBackgroundGradientColors, getGlobalLightingAdjustments, setGlobalLightingAdjustments, updateLightOriginalColor, getAdjustedGradientColors, setLightBaseColor, setBackgroundColorFromAdjusted, getFresnelMaster, setFresnelMaster } from './scene.js';
 import { initModelLoader, loadModel } from './models.js';
 import { initControls } from './controls.js';
 import { initSelector, selectPrevious, selectNext, updateSelector, getSelectedItem, getSelectedIndex, getItemCount, addSpinImpulse } from './selector.js';
@@ -41,8 +41,14 @@ let lightingDebugStyle = null;
 let savedAudioVolume = null;
 let sfxMutedForLighting = false;
 const colorFieldBindings = [];
+const colorFieldDirtySetters = [];
+const rangeFieldBindings = [];
+const rangeFieldDirtyUpdaters = [];
 const refreshColorBindings = () => {
     colorFieldBindings.forEach((binding) => binding());
+};
+const refreshRangeBindings = () => {
+    rangeFieldBindings.forEach((binding) => binding());
 };
 const SFX_CONFIG = {
     swipe: { path: 'Sounds/coin-4.wav', volume: 0.6 },
@@ -803,6 +809,9 @@ function setupLightingDebugPanel() {
 
     const body = panel.querySelector('.lighting-debug-body');
     colorFieldBindings.length = 0;
+    colorFieldDirtySetters.length = 0;
+    rangeFieldBindings.length = 0;
+    rangeFieldDirtyUpdaters.length = 0;
 
     const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
     const formatNumber = (value, decimals = 2) => Number(value).toFixed(decimals);
@@ -897,6 +906,8 @@ function setupLightingDebugPanel() {
             setResetState(reset, { dirty });
         };
 
+        rangeFieldDirtyUpdaters.push(() => updateReset(Number(range.value)));
+
         const applyValue = (inputValue) => {
             const clamped = clamp(inputValue, Number(min), Number(max));
             const fixed = parseFloat(formatNumber(clamped, decimals));
@@ -931,7 +942,7 @@ function setupLightingDebugPanel() {
         return field;
     };
 
-    const createColorField = ({ label, baseColor, getCurrentColor, disabled = false, descriptor = null, onChange }) => {
+    const createColorField = ({ label, baseColor, getCurrentColor, disabled = false, descriptor = null, onChange, onReset = null }) => {
         const field = document.createElement('div');
         field.className = 'lighting-debug-field';
 
@@ -973,6 +984,11 @@ function setupLightingDebugPanel() {
                 setResetState(reset, { dirty: false });
             }
         };
+
+        colorFieldDirtySetters.push(() => {
+            userDirty = true;
+            setResetState(reset, { dirty: true });
+        });
 
         colorFieldBindings.push(updateDisplay);
         updateDisplay();
@@ -1018,15 +1034,22 @@ function setupLightingDebugPanel() {
             });
             hexInput.addEventListener('blur', handleHexCommit);
             reset.addEventListener('click', () => {
-                if (descriptor && descriptor.light) {
-                    setLightBaseColor(descriptor, defaultHex);
-                } else if (typeof onChange === 'function') {
-                    onChange(defaultHex);
+                if (typeof onReset === 'function') {
+                    onReset();
+                } else {
+                    if (descriptor && descriptor.light) {
+                        setLightBaseColor(descriptor, defaultHex);
+                    } else if (typeof onChange === 'function') {
+                        onChange(defaultHex);
+                    }
                 }
-                currentHex = defaultHex;
+                currentHex = (typeof getCurrentColor === 'function'
+                    ? getCurrentColor()
+                    : defaultHex).toUpperCase();
                 userDirty = false;
                 setResetState(reset, { dirty: false });
                 refreshColorBindings();
+                rangeFieldDirtyUpdaters.forEach((update) => update());
             });
         }
 
@@ -1052,6 +1075,8 @@ function setupLightingDebugPanel() {
         onChange: (val) => {
             setGlobalLightingAdjustments({ hue: val });
             refreshColorBindings();
+            rangeFieldDirtyUpdaters.forEach((update) => update());
+            colorFieldDirtySetters.forEach((markDirty) => markDirty());
         },
         dataAttributes: {
             range: { globalControl: 'true', type: 'hue', target: 'range' },
@@ -1068,6 +1093,8 @@ function setupLightingDebugPanel() {
         onChange: (val) => {
             setGlobalLightingAdjustments({ saturation: val });
             refreshColorBindings();
+            rangeFieldDirtyUpdaters.forEach((update) => update());
+            colorFieldDirtySetters.forEach((markDirty) => markDirty());
         },
         dataAttributes: {
             range: { globalControl: 'true', type: 'saturation', target: 'range' },
@@ -1084,6 +1111,8 @@ function setupLightingDebugPanel() {
         onChange: (val) => {
             setGlobalLightingAdjustments({ lightness: val });
             refreshColorBindings();
+            rangeFieldDirtyUpdaters.forEach((update) => update());
+            colorFieldDirtySetters.forEach((markDirty) => markDirty());
         },
         dataAttributes: {
             range: { globalControl: 'true', type: 'lightness', target: 'range' },
@@ -1120,13 +1149,21 @@ function setupLightingDebugPanel() {
                 if (light.decay !== undefined && descriptor.type === 'PointLight') {
                     light.decay = 2.0;
                 }
+                setResetState(intensityField.resetButton, { dirty: Math.abs(val - originalIntensity) > step * 0.35 });
             }
         });
         group.appendChild(intensityField);
+        rangeFieldBindings.push(() => {
+            const current = light.intensity;
+            const dirty = Math.abs(current - originalIntensity) > step * 0.35;
+            setResetState(intensityField.resetButton, { dirty });
+        });
 
         if (light.color) {
-            const baseColorHex = descriptor.originalColor
-                ? `#${descriptor.originalColor.getHexString().toUpperCase()}`
+            const baseColorHex = descriptor.initialColor
+                ? `#${descriptor.initialColor.getHexString().toUpperCase()}`
+                : descriptor.originalColor
+                    ? `#${descriptor.originalColor.getHexString().toUpperCase()}`
                 : `#${light.color.getHexString().toUpperCase()}`;
             const colorField = createColorField({
                 label: 'Color',
@@ -1157,6 +1194,73 @@ function setupLightingDebugPanel() {
     }));
     body.appendChild(envGroup);
 
+    const fresnelState = getFresnelMaster();
+    const fresnelGroup = document.createElement('div');
+    fresnelGroup.className = 'lighting-debug-group';
+    const fresnelHeading = document.createElement('h3');
+    fresnelHeading.textContent = 'Fresnel';
+    fresnelGroup.appendChild(fresnelHeading);
+    fresnelGroup.appendChild(createRangeField({
+        label: 'Intensity',
+        min: 0,
+        max: 3,
+        step: 0.01,
+        value: fresnelState.intensity,
+        original: fresnelState.intensity,
+        decimals: 3,
+        onChange: (val) => {
+            setFresnelMaster({ intensity: val });
+        },
+        dataAttributes: {
+            range: { fresnelControl: 'true', type: 'intensity', target: 'range' },
+            number: { fresnelControl: 'true', type: 'intensity', target: 'number' }
+        }
+    }));
+    fresnelGroup.appendChild(createRangeField({
+        label: 'Power',
+        min: 0,
+        max: 8,
+        step: 0.05,
+        value: fresnelState.power,
+        original: fresnelState.power,
+        onChange: (val) => {
+            setFresnelMaster({ power: val });
+        },
+        dataAttributes: {
+            range: { fresnelControl: 'true', type: 'power', target: 'range' },
+            number: { fresnelControl: 'true', type: 'power', target: 'number' }
+        }
+    }));
+    fresnelGroup.appendChild(createRangeField({
+        label: 'Radius',
+        min: 0,
+        max: 1,
+        step: 0.01,
+        value: fresnelState.bias,
+        original: fresnelState.bias,
+        onChange: (val) => {
+            setFresnelMaster({ bias: val });
+        },
+        dataAttributes: {
+            range: { fresnelControl: 'true', type: 'bias', target: 'range' },
+            number: { fresnelControl: 'true', type: 'bias', target: 'number' }
+        }
+    }));
+    fresnelGroup.appendChild(createColorField({
+        label: 'Color',
+        baseColor: fresnelState.baseColor,
+        getCurrentColor: () => getFresnelMaster().displayColor,
+        onChange: (hex) => {
+            setFresnelMaster({ color: hex });
+            refreshColorBindings();
+        },
+        onReset: () => {
+            setFresnelMaster({ color: null });
+            refreshColorBindings();
+        }
+    }));
+    body.appendChild(fresnelGroup);
+
     const gradientState = getBackgroundGradientColors();
     const backgroundGroup = document.createElement('div');
     backgroundGroup.className = 'lighting-debug-group';
@@ -1170,6 +1274,10 @@ function setupLightingDebugPanel() {
         onChange: (hex) => {
             setBackgroundColorFromAdjusted('top', hex);
             refreshColorBindings();
+        },
+        onReset: () => {
+            setBackgroundGradientColors({ top: gradientState.top });
+            refreshColorBindings();
         }
     }));
     backgroundGroup.appendChild(createColorField({
@@ -1178,6 +1286,10 @@ function setupLightingDebugPanel() {
         getCurrentColor: () => getAdjustedGradientColors().bottom,
         onChange: (hex) => {
             setBackgroundColorFromAdjusted('bottom', hex);
+            refreshColorBindings();
+        },
+        onReset: () => {
+            setBackgroundGradientColors({ bottom: gradientState.bottom });
             refreshColorBindings();
         }
     }));
@@ -1254,7 +1366,8 @@ function setupLightingDebugPanel() {
                 intensity: Number(getEnvironmentReflectionIntensity().toFixed(3))
             },
             backgroundGradient: getBackgroundGradientColors(),
-            global: getGlobalLightingAdjustments()
+            global: getGlobalLightingAdjustments(),
+            fresnel: getFresnelMaster()
         };
         const bloomSnapshot = getBloomDebugSettings();
         if (bloomSnapshot) {
@@ -1285,40 +1398,6 @@ function setupLightingDebugPanel() {
     };
     copyButton.addEventListener('click', () => handleCopy(copyButton));
     body.appendChild(copyButton);
-
-    const resetAllButton = document.createElement('button');
-    resetAllButton.type = 'button';
-    resetAllButton.className = 'lighting-debug-copy';
-    resetAllButton.textContent = 'Reset All';
-    resetAllButton.style.marginTop = '0.35rem';
-    resetAllButton.addEventListener('click', () => {
-        setGlobalLightingAdjustments({ hue: 0, saturation: 1, lightness: 1 });
-        setEnvironmentReflectionIntensity(envOriginal);
-        setBackgroundGradientColors({
-            top: gradientState.top,
-            bottom: gradientState.bottom
-        });
-        lightingRegistry.forEach((descriptor) => {
-            if (descriptor.light && descriptor.originalColor) {
-                descriptor.light.color.copy(descriptor.originalColor);
-                updateLightOriginalColor(descriptor, descriptor.originalColor.clone());
-            }
-        });
-        refreshColorBindings();
-        const globalRangeInputs = panel.querySelectorAll('[data-global-control="true"][data-target="range"]');
-        globalRangeInputs.forEach((input) => {
-            const { type } = input.dataset;
-            if (type === 'hue') input.value = '0';
-            if (type === 'saturation' || type === 'lightness') input.value = '1';
-        });
-        const globalNumberInputs = panel.querySelectorAll('[data-global-control="true"][data-target="number"]');
-        globalNumberInputs.forEach((input) => {
-            const { type } = input.dataset;
-            if (type === 'hue') input.value = '0';
-            if (type === 'saturation' || type === 'lightness') input.value = '1';
-        });
-    });
-    body.appendChild(resetAllButton);
 
     const closeButton = panel.querySelector('.lighting-debug-close');
     closeButton.addEventListener('click', () => {
@@ -1354,6 +1433,9 @@ function teardownLightingDebugPanel() {
         lightingDebugStyle = null;
     }
     colorFieldBindings.length = 0;
+    colorFieldDirtySetters.length = 0;
+    rangeFieldBindings.length = 0;
+    rangeFieldDirtyUpdaters.length = 0;
 }
 
 function setupLightingDebugTrigger() {

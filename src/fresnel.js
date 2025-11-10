@@ -27,6 +27,15 @@ export function applyFresnelToMaterial(material, options = {}) {
     // Convert color to THREE.Color if it's a number
     const fresnelColor = color instanceof THREE.Color ? color : new THREE.Color(color);
     
+    if (!material.userData) {
+        material.userData = {};
+    }
+    material.userData.fresnelBase = {
+        color: color instanceof THREE.Color ? color.clone() : new THREE.Color(color),
+        intensity,
+        power,
+        bias
+    };
     // Store original onBeforeCompile if it exists
     const originalOnBeforeCompile = material.onBeforeCompile;
     
@@ -97,6 +106,18 @@ export function applyFresnelToMaterial(material, options = {}) {
             totalEmissiveRadiance += fresnelEmission;
             `
         );
+
+        material.userData.fresnelUniforms = {
+            color: shader.uniforms.fresnelColor,
+            intensity: shader.uniforms.fresnelIntensity,
+            power: shader.uniforms.fresnelPower,
+            bias: shader.uniforms.fresnelBias
+        };
+
+        if (material.userData.pendingFresnelUpdate) {
+            updateFresnelMaterial(material, material.userData.pendingFresnelUpdate);
+            delete material.userData.pendingFresnelUpdate;
+        }
     };
 
     // Mark material as needing update
@@ -116,5 +137,37 @@ export function applyFresnelToMesh(mesh, options = {}) {
             applyFresnelToMaterial(mesh.material, options);
         }
     }
+}
+
+export function updateFresnelMaterial(material, options = {}) {
+    if (!material) return;
+    if (!material.userData) {
+        material.userData = {};
+    }
+
+    const uniforms = material.userData.fresnelUniforms;
+    if (!uniforms) {
+        material.userData.pendingFresnelUpdate = {
+            ...material.userData.pendingFresnelUpdate,
+            ...options
+        };
+        return;
+    }
+
+    const { color, intensity, power, bias } = options;
+    if (color !== undefined) {
+        const col = color instanceof THREE.Color ? color : new THREE.Color(color);
+        uniforms.color.value.copy(col);
+    }
+    if (intensity !== undefined) {
+        uniforms.intensity.value = intensity;
+    }
+    if (power !== undefined) {
+        uniforms.power.value = power;
+    }
+    if (bias !== undefined) {
+        uniforms.bias.value = bias;
+    }
+    material.needsUpdate = true;
 }
 
