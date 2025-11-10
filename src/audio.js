@@ -5,6 +5,7 @@
  */
 
 let audioContext = null;
+let sfxMuted = false;
 
 function supportsWebAudio() {
     return typeof window !== 'undefined' &&
@@ -44,7 +45,7 @@ export async function loadSfx(url) {
 }
 
 export function playSfx(loadedSfx, { volume = 1.0, playbackRate = 1.0 } = {}) {
-    if (!loadedSfx) return;
+    if (!loadedSfx || sfxMuted) return;
 
     if (loadedSfx.type === 'html') {
         const audio = loadedSfx.audio;
@@ -93,6 +94,7 @@ export function playTypeSound({
     duration = 0.08,
     volume = 0.08
 } = {}) {
+    if (sfxMuted) return;
     const context = getAudioContext();
     if (!context) return;
 
@@ -126,5 +128,9 @@ export function playTypeSound({
 
     osc.start(now);
     osc.stop(now + duration);
+}
+
+export function setSfxMuted(muted) {
+    sfxMuted = !!muted;
 }
 

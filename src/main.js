@@ -12,7 +12,7 @@ import { initPostProcessing, render as renderPostProcessing, setBloomEnabled, is
 import { initOverlay, animateOverlaySelectionChange, updateOverlayContent, adjustQuantity } from './ui/overlay.js';
 import { initShopkeeper } from './ui/shopkeeper.js';
 import { getFoodDetailsByName } from './data/foodDetails.js';
-import { loadSfx, playSfx } from './audio.js';
+import { loadSfx, playSfx, setSfxMuted } from './audio.js';
 import { getPerformanceTier } from './utils.js';
 import { initConfetti3D, spawnConfettiBurst, updateConfetti3D } from './confetti3d.js';
 
@@ -69,6 +69,7 @@ function setLightingDebugAudioMuted(active) {
     if (active) {
         if (!sfxMutedForLighting) {
             sfxMutedForLighting = true;
+            setSfxMuted(true);
             if (state.audio) {
                 if (savedAudioVolume === null && typeof state.audio.volume === 'number') {
                     savedAudioVolume = state.audio.volume;
@@ -78,6 +79,7 @@ function setLightingDebugAudioMuted(active) {
         }
     } else if (sfxMutedForLighting) {
         sfxMutedForLighting = false;
+        setSfxMuted(false);
         if (state.audio && savedAudioVolume !== null) {
             state.audio.volume = savedAudioVolume;
         }
