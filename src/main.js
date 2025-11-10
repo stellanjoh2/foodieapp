@@ -602,9 +602,9 @@ function setupLightingDebugPanel() {
     style.textContent = `
         .lighting-debug-panel {
             position: fixed;
-            top: 1.5rem;
-            right: 1.5rem;
-            bottom: 1.5rem;
+            top: 2rem;
+            right: 2rem;
+            bottom: 2rem;
             background: rgba(255, 255, 255, 0.45);
             border: 1px solid rgba(255,255,255,0.65);
             backdrop-filter: blur(18px);
@@ -651,7 +651,7 @@ function setupLightingDebugPanel() {
             display: grid;
             gap: 1rem;
             overflow-y: auto;
-            max-height: calc(100vh - 6.8rem);
+            max-height: calc(100vh - 7.6rem);
         }
         .lighting-debug-group {
             background: rgba(255,255,255,0.9);
@@ -751,8 +751,8 @@ function setupLightingDebugPanel() {
         }
         .lighting-debug-copy {
             border: none;
-            background: rgba(240,87,58,1);
-            color: #ffffff;
+            background: #ffffff;
+            color: #f0573a;
             padding: 0.6rem 0.85rem;
             border-radius: 999px;
             font-family: inherit;
@@ -765,7 +765,7 @@ function setupLightingDebugPanel() {
             margin-top: 0.6rem;
         }
         .lighting-debug-copy:hover {
-            background: rgba(240,87,58,0.82);
+            background: rgba(240,87,58,0.18);
         }
         .lighting-debug-copy:active {
             transform: translateY(1px);
