@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { initScene, startRenderLoop, getRenderer, getTopSpotlight, setEnvironmentReflectionIntensity, getLightingRegistry, getEnvironmentReflectionIntensity, getBackgroundGradientColors, setBackgroundGradientColors, getGlobalLightingAdjustments, setGlobalLightingAdjustments, updateLightOriginalColor } from './scene.js';
+import { initScene, startRenderLoop, getRenderer, getTopSpotlight, setEnvironmentReflectionIntensity, getLightingRegistry, getEnvironmentReflectionIntensity, getBackgroundGradientColors, setBackgroundGradientColors, getGlobalLightingAdjustments, setGlobalLightingAdjustments, updateLightOriginalColor, getAdjustedGradientColors } from './scene.js';
 import { initModelLoader, loadModel } from './models.js';
 import { initControls } from './controls.js';
 import { initSelector, selectPrevious, selectNext, updateSelector, getSelectedItem, getSelectedIndex, getItemCount, addSpinImpulse } from './selector.js';
@@ -40,6 +40,10 @@ let lightingDebugPanel = null;
 let lightingDebugStyle = null;
 let savedAudioVolume = null;
 let sfxMutedForLighting = false;
+const colorFieldBindings = [];
+const refreshColorBindings = () => {
+    colorFieldBindings.forEach((binding) => binding());
+};
 const SFX_CONFIG = {
     swipe: { path: 'Sounds/coin-4.wav', volume: 0.6 },
     cancel: { path: 'Sounds/cancel-1.wav', volume: 0.55 },
@@ -796,6 +800,7 @@ function setupLightingDebugPanel() {
     });
 
     const body = panel.querySelector('.lighting-debug-body');
+    colorFieldBindings.length = 0;
 
     const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
     const formatNumber = (value, decimals = 2) => Number(value).toFixed(decimals);
@@ -913,7 +918,7 @@ function setupLightingDebugPanel() {
         return field;
     };
 
-    const createColorField = ({ label, value, original, disabled = false, descriptor = null, onChange }) => {
+    const createColorField = ({ label, baseColor, getCurrentColor, disabled = false, descriptor = null, onChange }) => {
         const field = document.createElement('div');
         field.className = 'lighting-debug-field';
 
@@ -927,13 +932,11 @@ function setupLightingDebugPanel() {
         const colorInput = document.createElement('input');
         colorInput.type = 'color';
         colorInput.className = 'lighting-debug-color';
-        colorInput.value = value;
         colorInput.disabled = disabled;
 
         const hexInput = document.createElement('input');
         hexInput.type = 'text';
         hexInput.className = 'lighting-debug-hex';
-        hexInput.value = value;
         hexInput.maxLength = 7;
         hexInput.placeholder = '#FFFFFF';
         hexInput.disabled = disabled;
@@ -945,29 +948,45 @@ function setupLightingDebugPanel() {
         reset.innerText = '×';
         reset.disabled = disabled;
 
-        const originalHex = original ?? value;
+        const defaultHex = (baseColor || (typeof getCurrentColor === 'function' ? getCurrentColor() : '#FFFFFF') || '#FFFFFF').toUpperCase();
+        let currentHex = defaultHex;
+        let userDirty = false;
 
-        const applyHex = (hex) => {
+        const updateDisplay = () => {
+            const displayHex = (typeof getCurrentColor === 'function' ? getCurrentColor() : currentHex).toUpperCase();
+            hexInput.value = displayHex;
+            colorInput.value = displayHex;
+            if (!userDirty) {
+                setResetState(reset, { dirty: false });
+            }
+        };
+
+        colorFieldBindings.push(updateDisplay);
+        updateDisplay();
+
+        const applyHex = (hex, { skipDirty = false } = {}) => {
             const normalized = normalizeHex(hex);
             if (!normalized) {
-                hexInput.value = colorInput.value.toUpperCase();
+                updateDisplay();
                 return false;
             }
-            hexInput.value = normalized;
-            colorInput.value = normalized;
+            const normalizedUpper = normalized.toUpperCase();
             if (descriptor && descriptor.light) {
-                const newColor = new THREE.Color(normalized);
-                if (typeof onChange === 'function') {
-                    onChange(newColor);
-                } else {
-                    descriptor.light.color.copy(newColor);
-                }
-                updateLightOriginalColor(descriptor, newColor);
+                const newColor = new THREE.Color(normalizedUpper);
+                descriptor.light.color.copy(newColor);
+                updateLightOriginalColor(descriptor, newColor.clone());
             } else if (typeof onChange === 'function') {
-                onChange(normalized);
+                onChange(normalizedUpper);
             }
-            const dirty = normalized !== originalHex;
-            setResetState(reset, { dirty });
+            currentHex = normalizedUpper;
+            if (!skipDirty) {
+                userDirty = currentHex !== defaultHex;
+                setResetState(reset, { dirty: userDirty });
+            } else {
+                userDirty = false;
+                setResetState(reset, { dirty: false });
+            }
+            refreshColorBindings();
             return true;
         };
 
@@ -988,11 +1007,20 @@ function setupLightingDebugPanel() {
             });
             hexInput.addEventListener('blur', handleHexCommit);
             reset.addEventListener('click', () => {
-                applyHex(originalHex);
+                if (descriptor && descriptor.light) {
+                    const baseColorObj = new THREE.Color(defaultHex);
+                    descriptor.light.color.copy(baseColorObj);
+                    updateLightOriginalColor(descriptor, baseColorObj.clone());
+                } else if (typeof onChange === 'function') {
+                    onChange(defaultHex);
+                }
+                currentHex = defaultHex;
+                userDirty = false;
+                setResetState(reset, { dirty: false });
+                refreshColorBindings();
             });
         }
 
-        setResetState(reset, { dirty: false });
         controls.append(colorInput, hexInput, reset);
         field.appendChild(controls);
         return field;
@@ -1012,7 +1040,10 @@ function setupLightingDebugPanel() {
         value: globalState.hue,
         original: 0,
         decimals: 0,
-        onChange: (val) => setGlobalLightingAdjustments({ hue: val })
+        onChange: (val) => {
+            setGlobalLightingAdjustments({ hue: val });
+            refreshColorBindings();
+        }
     }));
     globalGroup.appendChild(createRangeField({
         label: 'Saturation',
@@ -1021,7 +1052,10 @@ function setupLightingDebugPanel() {
         step: 0.01,
         value: globalState.saturation,
         original: 1,
-        onChange: (val) => setGlobalLightingAdjustments({ saturation: val })
+        onChange: (val) => {
+            setGlobalLightingAdjustments({ saturation: val });
+            refreshColorBindings();
+        }
     }));
     globalGroup.appendChild(createRangeField({
         label: 'Lightness',
@@ -1030,7 +1064,10 @@ function setupLightingDebugPanel() {
         step: 0.01,
         value: globalState.lightness,
         original: 1,
-        onChange: (val) => setGlobalLightingAdjustments({ lightness: val })
+        onChange: (val) => {
+            setGlobalLightingAdjustments({ lightness: val });
+            refreshColorBindings();
+        }
     }));
     body.appendChild(globalGroup);
 
@@ -1067,13 +1104,13 @@ function setupLightingDebugPanel() {
         group.appendChild(intensityField);
 
         if (light.color) {
-            const originalColor = descriptor.originalColor
+            const baseColorHex = descriptor.originalColor
                 ? `#${descriptor.originalColor.getHexString().toUpperCase()}`
                 : `#${light.color.getHexString().toUpperCase()}`;
             const colorField = createColorField({
                 label: 'Color',
-                value: originalColor,
-                original: originalColor,
+                baseColor: baseColorHex,
+                getCurrentColor: () => `#${light.color.getHexString().toUpperCase()}`,
                 descriptor
             });
             group.appendChild(colorField);
@@ -1107,15 +1144,21 @@ function setupLightingDebugPanel() {
     backgroundGroup.appendChild(backgroundHeading);
     backgroundGroup.appendChild(createColorField({
         label: 'Top Color',
-        value: gradientState.top,
-        original: gradientState.top,
-        onChange: (hex) => setBackgroundGradientColors({ top: hex })
+        baseColor: gradientState.top,
+        getCurrentColor: () => getAdjustedGradientColors().top,
+        onChange: (hex) => {
+            setBackgroundGradientColors({ top: hex });
+            refreshColorBindings();
+        }
     }));
     backgroundGroup.appendChild(createColorField({
         label: 'Bottom Color',
-        value: gradientState.bottom,
-        original: gradientState.bottom,
-        onChange: (hex) => setBackgroundGradientColors({ bottom: hex })
+        baseColor: gradientState.bottom,
+        getCurrentColor: () => getAdjustedGradientColors().bottom,
+        onChange: (hex) => {
+            setBackgroundGradientColors({ bottom: hex });
+            refreshColorBindings();
+        }
     }));
     body.appendChild(backgroundGroup);
 
@@ -1170,6 +1213,8 @@ function setupLightingDebugPanel() {
         bloomGroup.appendChild(message);
     }
     body.appendChild(bloomGroup);
+
+    refreshColorBindings();
 
     const copyButton = document.createElement('button');
     copyButton.type = 'button';

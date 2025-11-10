@@ -355,6 +355,17 @@ function getAdjustedColorFromHex(hex) {
     return result;
 }
 
+export function getAdjustedGradientColors() {
+    const top = getAdjustedColorFromHex(gradientColors.top);
+    const middle = getAdjustedColorFromHex(gradientColors.middle);
+    const bottom = getAdjustedColorFromHex(gradientColors.bottom);
+    return {
+        top: `#${top.getHexString().toUpperCase()}`,
+        middle: `#${middle.getHexString().toUpperCase()}`,
+        bottom: `#${bottom.getHexString().toUpperCase()}`
+    };
+}
+
 function applyGlobalLightingAdjustments() {
     lightingRegistry.forEach((entry) => {
         const light = entry.light;
