@@ -1212,6 +1212,27 @@ function setupLightingDebugPanel() {
 
     refreshColorBindings();
 
+    const resetAllButton = document.createElement('button');
+    resetAllButton.type = 'button';
+    resetAllButton.className = 'lighting-debug-copy';
+    resetAllButton.textContent = 'Reset All';
+    resetAllButton.addEventListener('click', () => {
+        setGlobalLightingAdjustments({ hue: 0, saturation: 1, lightness: 1 });
+        setEnvironmentReflectionIntensity(envOriginal);
+        setBackgroundGradientColors({
+            top: gradientState.top,
+            bottom: gradientState.bottom
+        });
+        lightingRegistry.forEach((descriptor) => {
+            if (descriptor.light && descriptor.originalColor) {
+                descriptor.light.color.copy(descriptor.originalColor);
+                updateLightOriginalColor(descriptor, descriptor.originalColor.clone());
+            }
+        });
+        refreshColorBindings();
+    });
+    body.appendChild(resetAllButton);
+
     const copyButton = document.createElement('button');
     copyButton.type = 'button';
     copyButton.className = 'lighting-debug-copy';
