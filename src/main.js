@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { initScene, startRenderLoop, getRenderer, getTopSpotlight, setEnvironmentReflectionIntensity, getLightingRegistry, getEnvironmentReflectionIntensity, getBackgroundGradientColors, setBackgroundGradientColors } from './scene.js';
+import { initScene, startRenderLoop, getRenderer, getTopSpotlight, setEnvironmentReflectionIntensity, getLightingRegistry, getEnvironmentReflectionIntensity, getBackgroundGradientColors, setBackgroundGradientColors, getGlobalLightingAdjustments, setGlobalLightingAdjustments, updateLightOriginalColor } from './scene.js';
 import { initModelLoader, loadModel } from './models.js';
 import { initControls } from './controls.js';
 import { initSelector, selectPrevious, selectNext, updateSelector, getSelectedItem, getSelectedIndex, getItemCount, addSpinImpulse } from './selector.js';
@@ -913,7 +913,7 @@ function setupLightingDebugPanel() {
         return field;
     };
 
-    const createColorField = ({ label, value, original, disabled = false, onChange }) => {
+    const createColorField = ({ label, value, original, disabled = false, descriptor = null, onChange }) => {
         const field = document.createElement('div');
         field.className = 'lighting-debug-field';
 
@@ -955,7 +955,15 @@ function setupLightingDebugPanel() {
             }
             hexInput.value = normalized;
             colorInput.value = normalized;
-            if (typeof onChange === 'function') {
+            if (descriptor && descriptor.light) {
+                const newColor = new THREE.Color(normalized);
+                if (typeof onChange === 'function') {
+                    onChange(newColor);
+                } else {
+                    descriptor.light.color.copy(newColor);
+                }
+                updateLightOriginalColor(descriptor, newColor);
+            } else if (typeof onChange === 'function') {
                 onChange(normalized);
             }
             const dirty = normalized !== originalHex;
@@ -990,6 +998,42 @@ function setupLightingDebugPanel() {
         return field;
     };
 
+    const globalState = getGlobalLightingAdjustments();
+    const globalGroup = document.createElement('div');
+    globalGroup.className = 'lighting-debug-group';
+    const globalHeading = document.createElement('h3');
+    globalHeading.textContent = 'Global';
+    globalGroup.appendChild(globalHeading);
+    globalGroup.appendChild(createRangeField({
+        label: 'Hue',
+        min: -180,
+        max: 180,
+        step: 1,
+        value: globalState.hue,
+        original: 0,
+        decimals: 0,
+        onChange: (val) => setGlobalLightingAdjustments({ hue: val })
+    }));
+    globalGroup.appendChild(createRangeField({
+        label: 'Saturation',
+        min: 0,
+        max: 2,
+        step: 0.01,
+        value: globalState.saturation,
+        original: 1,
+        onChange: (val) => setGlobalLightingAdjustments({ saturation: val })
+    }));
+    globalGroup.appendChild(createRangeField({
+        label: 'Lightness',
+        min: 0,
+        max: 2,
+        step: 0.01,
+        value: globalState.lightness,
+        original: 1,
+        onChange: (val) => setGlobalLightingAdjustments({ lightness: val })
+    }));
+    body.appendChild(globalGroup);
+
     lights.forEach((descriptor) => {
         const { light, label, intensityRange, intensityStep } = descriptor;
         const group = document.createElement('div');
@@ -1023,14 +1067,14 @@ function setupLightingDebugPanel() {
         group.appendChild(intensityField);
 
         if (light.color) {
-            const originalColor = `#${light.color.getHexString().toUpperCase()}`;
+            const originalColor = descriptor.originalColor
+                ? `#${descriptor.originalColor.getHexString().toUpperCase()}`
+                : `#${light.color.getHexString().toUpperCase()}`;
             const colorField = createColorField({
                 label: 'Color',
                 value: originalColor,
                 original: originalColor,
-                onChange: (hex) => {
-                    light.color.set(hex);
-                }
+                descriptor
             });
             group.appendChild(colorField);
         }
@@ -1142,7 +1186,8 @@ function setupLightingDebugPanel() {
             environment: {
                 intensity: Number(getEnvironmentReflectionIntensity().toFixed(3))
             },
-            backgroundGradient: getBackgroundGradientColors()
+            backgroundGradient: getBackgroundGradientColors(),
+            global: getGlobalLightingAdjustments()
         };
         const bloomSnapshot = getBloomDebugSettings();
         if (bloomSnapshot) {

@@ -19,6 +19,11 @@ let gradientColors = {
     middle: '#f0573a',
     bottom: '#f8aa3b'
 };
+let globalLightingAdjust = {
+    hue: 0,
+    saturation: 1,
+    lightness: 1
+};
 
 /**
  * Initialize Three.js scene
@@ -293,6 +298,7 @@ function registerLightControl(entry) {
     lightingRegistry.push({
         intensityRange: [0, 5],
         intensityStep: 0.01,
+        originalColor: entry.light && entry.light.color ? entry.light.color.clone() : null,
         ...entry
     });
 }
@@ -322,6 +328,48 @@ export function setBackgroundGradientColors(update = {}) {
         gradientColors.middle = `#${middleColor.getHexString()}`;
     }
     updateSceneBackgroundGradient();
+}
+
+function clamp01(value) {
+    return Math.max(0, Math.min(1, value));
+}
+
+function applyGlobalLightingAdjustments() {
+    lightingRegistry.forEach((entry) => {
+        const light = entry.light;
+        if (!light || !entry.originalColor || !light.color) return;
+        const base = entry.originalColor.clone();
+        const hsl = { h: 0, s: 0, l: 0 };
+        base.getHSL(hsl);
+
+        let hue = hsl.h + (globalLightingAdjust.hue / 360);
+        hue = THREE.MathUtils.euclideanModulo(hue, 1);
+        const saturation = clamp01(hsl.s * globalLightingAdjust.saturation);
+        const lightness = clamp01(hsl.l * globalLightingAdjust.lightness);
+        light.color.setHSL(hue, saturation, lightness);
+    });
+}
+
+export function getGlobalLightingAdjustments() {
+    return { ...globalLightingAdjust };
+}
+
+export function setGlobalLightingAdjustments(update = {}) {
+    globalLightingAdjust = {
+        ...globalLightingAdjust,
+        ...update
+    };
+    applyGlobalLightingAdjustments();
+}
+
+export function updateLightOriginalColor(entry, color) {
+    if (!entry) return;
+    if (!color) {
+        entry.originalColor = null;
+        return;
+    }
+    entry.originalColor = color.clone ? color.clone() : new THREE.Color(color);
+    applyGlobalLightingAdjustments();
 }
 
 /**
